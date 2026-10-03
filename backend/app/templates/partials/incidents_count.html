@@ -1,0 +1,1 @@
+<p id="incidents-count" class="text-sm text-text-muted" aria-live="polite" tabindex="-1"{% if oob %} hx-swap-oob="true"{% endif %}>{{ total }} incident{{ "" if total == 1 else "s" }}{% if status_label %} ({{ status_label }}){% endif %}</p>

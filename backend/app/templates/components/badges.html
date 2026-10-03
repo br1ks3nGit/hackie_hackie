@@ -16,3 +16,15 @@
 {% macro review_pill() -%}
 <span class="pill bg-warning-soft text-warning-ink"><span aria-hidden="true">!</span>Review</span>
 {%- endmacro %}
+
+{% macro incident_pill(confirmed) -%}
+{%- if confirmed == "help_needed" -%}
+<span class="pill bg-danger-soft text-danger-ink"><span aria-hidden="true">!</span>Help needed</span>
+{%- elif confirmed == "no_response" -%}
+<span class="pill bg-warning-soft text-warning-ink"><span aria-hidden="true">?</span>No response</span>
+{%- elif confirmed == "ok" -%}
+<span class="pill bg-success-soft text-success-ink"><span aria-hidden="true">&#10003;</span>OK</span>
+{%- else -%}
+<span class="pill bg-surface-muted text-text"><span aria-hidden="true">-</span>Unconfirmed</span>
+{%- endif -%}
+{%- endmacro %}

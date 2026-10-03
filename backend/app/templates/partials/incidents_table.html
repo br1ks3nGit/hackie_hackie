@@ -1,0 +1,60 @@
+{% from "components/badges.html" import incident_pill %}
+<div id="incidents-table">
+  {% if oob %}{% include "partials/incidents_count.html" %}{% endif %}
+  <div class="mt-2 overflow-x-auto rounded-lg border border-border bg-surface" tabindex="0" role="region" aria-label="Incidents">
+    <table class="w-full min-w-max text-sm text-left">
+      <caption class="sr-only">Crash incidents, newest first</caption>
+      <thead class="bg-surface-muted text-text-muted font-medium">
+        <tr>
+          <th scope="col" class="px-4 py-3">Time (HKT)</th>
+          <th scope="col" class="px-4 py-3">Driver</th>
+          <th scope="col" class="px-4 py-3">Trip</th>
+          <th scope="col" class="px-4 py-3 text-right">Peak g</th>
+          <th scope="col" class="px-4 py-3">Location</th>
+          <th scope="col" class="px-4 py-3">Confirmation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in incidents %}
+        <tr class="{% if i.confirmed == 'help_needed' %}bg-danger-soft{% else %}hover:bg-surface-muted{% endif %}">
+          <th scope="row" class="px-4 py-3 border-t border-border text-left font-normal"><time datetime="{{ i.time.isoformat() }}">{{ i.time|hk_time }}</time></th>
+          <td class="px-4 py-3 border-t border-border"><a href="/dashboard/drivers/{{ i.driver_id }}" class="font-mono text-primary underline kbd-focus rounded-sm">{{ i.driver_id }}</a></td>
+          <td class="px-4 py-3 border-t border-border">{% if i.trip_id %}<a href="/dashboard/trips/{{ i.trip_id }}" class="font-mono text-primary underline kbd-focus rounded-sm">{{ i.trip_id }}</a>{% else %}-{% endif %}</td>
+          <td class="px-4 py-3 border-t border-border text-right font-mono tabular-nums">{% if i.peak_g is none %}-{% else %}{{ "%.2f"|format(i.peak_g) }} g{% endif %}</td>
+          <td class="px-4 py-3 border-t border-border">
+            {% if i.lat is none or i.lon is none %}-{% else %}
+            <span class="font-mono tabular-nums">{{ "%.4f"|format(i.lat) }}, {{ "%.4f"|format(i.lon) }}</span>
+            {% if i.trip_id %}<a href="/dashboard/trips/{{ i.trip_id }}" class="ml-2 text-primary underline kbd-focus rounded-sm">View on map<span class="sr-only"> for incident at {{ i.time|hk_time }}</span></a>
+            {% else %}<a href="https://www.openstreetmap.org/?mlat={{ '%.6f'|format(i.lat) }}&amp;mlon={{ '%.6f'|format(i.lon) }}#map=16/{{ '%.6f'|format(i.lat) }}/{{ '%.6f'|format(i.lon) }}" target="_blank" rel="noopener noreferrer" class="ml-2 text-primary underline kbd-focus rounded-sm">Open in OpenStreetMap<span class="sr-only"> (opens in a new tab)</span></a>{% endif %}
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 border-t border-border">{{ incident_pill(i.confirmed) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="px-4 py-12 text-center border-t border-border">
+            {% if status %}
+            <p class="text-lg font-semibold text-text">No incidents match this filter</p>
+            <p class="text-sm text-text-muted">No incidents are marked "{{ status_label }}".</p>
+            <a href="{{ clear_link.href }}" hx-get="{{ clear_link.hx }}" hx-target="#incidents-table" hx-swap="outerHTML" hx-indicator="#incidents-loading" class="btn btn-secondary mt-4">Clear filter</a>
+            {% else %}
+            <p class="text-lg font-semibold text-text">No incidents recorded.</p>
+            <p class="text-sm text-text-muted">Detected or reported crashes will appear here.</p>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if total %}
+  <nav aria-label="Pagination" class="mt-4 flex flex-wrap items-center justify-between gap-2">
+    <p class="text-sm text-text-muted">Showing {{ first }}-{{ last }} of {{ total }}</p>
+    <div class="flex items-center gap-2">
+      {% if prev_link %}<a href="{{ prev_link.href }}" hx-get="{{ prev_link.hx }}" hx-target="#incidents-table" hx-swap="outerHTML" hx-indicator="#incidents-loading" class="btn btn-secondary btn-sm">Previous</a>{% else %}<span class="btn btn-sm bg-surface text-primary border border-primary opacity-50 cursor-not-allowed" aria-disabled="true">Previous</span>{% endif %}
+      <span class="text-sm text-text-muted" aria-current="page">Page {{ page }} of {{ pages }}</span>
+      {% if next_link %}<a href="{{ next_link.href }}" hx-get="{{ next_link.hx }}" hx-target="#incidents-table" hx-swap="outerHTML" hx-indicator="#incidents-loading" class="btn btn-secondary btn-sm">Next</a>{% else %}<span class="btn btn-sm bg-surface text-primary border border-primary opacity-50 cursor-not-allowed" aria-disabled="true">Next</span>{% endif %}
+    </div>
+  </nav>
+  {% endif %}
+</div>
