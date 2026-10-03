@@ -50,9 +50,9 @@ DEFAULT = solid (chart bars, score ring, white text on it passes). `soft` + `ink
 
 Tier from `values.Tier` = "A".."E". Unscored (null tier) uses `surface-muted` bg, `text-muted` text, label "n/a".
 
-### 1.4 Event-type colors (map markers, event list chips)
+### 1.4 Event-type colors (event list chips; map markers removed for privacy)
 
-Markers also differ by SHAPE/glyph (not color alone); legend shows both.
+Chips differ by glyph (not color alone). Map markers were removed for privacy (no locations are stored or shown).
 
 | Key | Hex | Value in `values.EventType` | Marker shape | Label |
 |---|---|---|---|---|
@@ -62,7 +62,7 @@ Markers also differ by SHAPE/glyph (not color alone); legend shows both.
 | `event-speeding` | #B91C1C | `speeding` | circle, "Sp" | Speeding |
 | `event-crash` | #111827 | `crash` (incident marker; not in EventType) | square, "!" | Crash |
 
-Marker: 28px circle (square for crash), 2px white outline, white glyph 12px bold. Route polyline: `primary`, 4px, 0.9 opacity.
+Marker and route polyline specs: removed for privacy.
 Glyphs are 2 letters (11px bold) so they never read as tier letters A-E.
 
 ### 1.5 Contrast table (all pairs used)
@@ -284,9 +284,7 @@ HTMX: `hx-indicator` on a skeleton or spinner with class `htmx-indicator` (opaci
 
 ### 3.13 Map legend
 
-Below/over the map: `<ul class="flex flex-wrap gap-x-4 gap-y-2 text-sm">`, each `<li>`: marker swatch (same shape, color, glyph as on the map, 20px) + label text.
-Also include "Route" with a `primary` line sample. Map container `h-64 md:h-96 rounded-lg border border-border`, `role="region" aria-label="Trip route map"`;
-the event list beside it is the text alternative (each event: type label, time, peak g). Leaflet marker `alt` / `title` = event label.
+Removed for privacy: the dashboard has no map, legend or location display.
 
 ### 3.14 Chart (tier distribution, Chart.js)
 
@@ -322,7 +320,7 @@ Fragment routes return partials from `app/templates/partials/` (detected via `HX
 
 ### F1 Login + base layout
 - `GET /dashboard/login`: centered card `max-w-sm mx-auto mt-16`, h1 "DriveScore Insurer", fields username and password (`field`), primary `lg` button "Sign in" (full width), flash for errors (role=alert, "Invalid username or password"; do not say which). Plain form POST with CSRF (no HTMX needed). 422/401 re-render the form with error.
-- No nav shown when logged out. `base.html`: skip link, nav (3.9), main, toast region, static JS (htmx, alpine, chart.js, leaflet) pinned, `uno.css`.
+- No nav shown when logged out. `base.html`: skip link, nav (3.9), main, toast region, static JS (htmx, alpine, chart.js) pinned, `uno.css`.
 
 ### F2 Overview (`GET /dashboard`) - schema `InsurerOverviewResponse`
 - h1 "Overview". 3 stat tiles: Total drivers (`total_drivers`), Trips in last 90 days (`total_trips_90d`), Average premium multiplier (`average_multiplier`, "1.15x").
@@ -336,13 +334,13 @@ Fragment routes return partials from `app/templates/partials/` (detected via `HX
 
 ### F4 Trip detail (`GET /dashboard/trips/{trip_id}`) - `TripDetailResponse`
 - Header: started time, duration_min, distance_km, tier badge, score, confidence ("Confidence 85%").
-- Map card (3.13) from `route` polyline + `events` markers; legend below. JSON in `<script type="application/json">`, Alpine wraps Leaflet; tiles pinned to the OSM tile server per Leaflet static copy (attribution visible).
-- Event list card: table or `<ul>` (time, type label with swatch, peak g, hover/focus on a row highlights its marker via Alpine). Empty state if no events.
+- Map card: removed for privacy (no route or locations).
+- Event list card: table or `<ul>` (time, type label with swatch, peak g). Empty state if no events.
 - "Why this score" card: `explanation` paragraph, `text-base`; null -> "No explanation available."
 - Trip not scored (`tier` null) -> status pill + message; `failed` shows `failure_reason` in a danger flash. Full page.
 
 ### F5 Incidents (`GET /dashboard/incidents`)
-- Table: Time (local, ISO in `<time datetime>`), Driver (link), Peak g (`2.4 g`, mono), Location (lat, lon + "Open in map" link if available), Confirmation (status pill 3.8). Newest first, pagination as 3.6.
+- Table: Time (local, ISO in `<time datetime>`), Driver (link), Peak g (`2.4 g`, mono), Confirmation (status pill 3.8). Newest first, pagination as 3.6.
 - Partial `partials/incidents_table.html` polling `hx-trigger="every 30s"` (aria-live off for poll to avoid chatter; announce only new count via `HX-Trigger`).
 - Empty state "No incidents recorded."
 
@@ -381,7 +379,7 @@ colors: {
 | UnoCSS | `backend/uno.config.ts` -> `theme.colors` (presetWind; nested objects are supported) | Also `theme.fontFamily.sans/mono`, `theme.boxShadow` (`sm`, `md` from 2.4), `theme.ringColor`/colors `focus`. `shortcuts`: `btn`, `btn-primary`, `btn-secondary`, `btn-danger`, `btn-sm`, `btn-lg`, `input`, `kbd-focus`, `card`, `pill`, `tier-badge`. `safeList` all `tier-*`, `{status}-soft/ink`, `event-*` classes. |
 | NativeWind | `mobile/tailwind.config.js` -> `theme.extend.colors` | Same object, no `nav`/`focus`/`event` needed (harmless if kept). Radii/spacing/sizes use Tailwind defaults (match section 2). Content globs `./App.tsx`, `./src/**/*.{ts,tsx}`; preset `nativewind/preset`. Use hex strings only (no `rgb(var())`). |
 
-Chart.js and Leaflet read the same hex values: coder exposes them to JS by copying from the Python-side constants or reading CSS vars; simplest is to hard-code the
+Chart.js reads the same hex values: coder exposes them to JS by copying from the Python-side constants or reading CSS vars; simplest is to hard-code the
 tier/event hex in one static JS module `static/js/tokens.js` that mirrors section 6 (comment it as mirror).
 
 ## 7. Do / Don't

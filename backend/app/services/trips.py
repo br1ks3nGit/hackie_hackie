@@ -1,4 +1,3 @@
-import math
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -13,16 +12,12 @@ class TripEventView:
     type: str
     time: datetime
     peak_g: float | None
-    lat: float | None
-    lon: float | None
 
 
 @dataclass(frozen=True)
 class TripCrashView:
     time: datetime
     peak_g: float | None
-    lat: float | None
-    lon: float | None
     confirmed: str | None
 
 
@@ -46,22 +41,7 @@ class TripDetail:
     explanation: str | None
     failure_reason: str | None
     events: list[TripEventView]
-    route: list[list[float]]
     crashes: list[TripCrashView]
-
-
-def is_coord(value: object) -> bool:
-    """True for a finite int/float (bool excluded)."""
-    return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value)
-
-
-def _route_points(features: dict) -> list[list[float]]:
-    points = features.get("route") or []
-    return [
-        [p["lat"], p["lon"]]
-        for p in points
-        if isinstance(p, dict) and is_coord(p.get("lat")) and is_coord(p.get("lon"))
-    ]
 
 
 def get_trip_detail(db: Session, trip_id: str) -> TripDetail | None:
@@ -94,7 +74,6 @@ def get_trip_detail(db: Session, trip_id: str) -> TripDetail | None:
         model_version=score.model_version if score else None,
         explanation=generate_explanation(events, features) if score else None,
         failure_reason=trip.failure_reason,
-        events=[TripEventView(e.type, e.time, e.peak_g, e.lat, e.lon) for e in events],
-        route=_route_points(features),
-        crashes=[TripCrashView(c.time, c.peak_g, c.lat, c.lon, c.confirmed) for c in crashes],
+        events=[TripEventView(e.type, e.time, e.peak_g) for e in events],
+        crashes=[TripCrashView(c.time, c.peak_g, c.confirmed) for c in crashes],
     )

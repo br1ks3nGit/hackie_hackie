@@ -123,7 +123,7 @@ Mobile App ──POST /v1/trips/{id}/chunks──> Backend
 
 - `GET /v1/me/summary` → driver score, tier, premium multiplier, trend
 - `GET /v1/me/trips` → list of trips
-- `GET /v1/me/trips/{trip_id}` → trip detail with events and route
+- `GET /v1/me/trips/{trip_id}` → trip detail with events (no location data)
 - `POST /v1/me/trips/{trip_id}/label` -> label a trip `driver` or `passenger`
 - `POST /v1/me/incidents`, `POST /v1/me/incidents/{incident_id}/confirm`, `GET /v1/me/incidents` -> crash incidents
 
@@ -165,6 +165,10 @@ If loading fails or the model returns invalid values, the API fails loudly.
 
 ## Privacy (PDPO)
 
+- Coordinates never leave the phone: GPS is used on-device for speed only
+- The server stores no locations; requests with `lat`/`lon`/`lng` or any unknown field are rejected (422)
+- No route maps or event locations in the API or dashboard
+- Transit trips are confirmed by the user, not matched to a line
 - No data accepted without consent
 - Insurer endpoints show driver IDs only, no names
 - `DELETE /v1/me` removes all raw files and records

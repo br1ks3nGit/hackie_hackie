@@ -121,7 +121,7 @@ Purpose: one recorded drive, its classification and processing state.
 | trip_type | string | yes | Who was driving; null until classified. |
 | label_source | string | yes | Who decided trip_type; null if unlabelled. |
 | driver_likelihood | float | yes | Classifier probability 0 to 1 that the user drove. |
-| transit_line | string | yes | Matched transit line for transit trips. |
+| transit_line | string | yes | Legacy: transit line matching was removed; always NULL. |
 | bluetooth_connected_ratio | float | yes | Share 0 to 1 of the trip on car Bluetooth. |
 | created_at | timestamptz | no | Row creation time. |
 
@@ -148,8 +148,8 @@ Purpose: harsh driving events detected in a trip.
 | type | string | no | Event kind, see Allowed values. |
 | time | timestamptz | no | When the event happened. |
 | peak_g | float | yes | Peak acceleration in g; null for speeding. |
-| lat | float | yes | Latitude, degrees. |
-| lon | float | yes | Longitude, degrees. |
+| lat | float | yes | Deprecated, always NULL, dropped in migration 0005 (P3). |
+| lon | float | yes | Deprecated, always NULL, dropped in migration 0005 (P3). |
 
 ### trip_features
 
@@ -160,7 +160,7 @@ Purpose: computed features of a trip (one row per trip, unique trip_id). The JSO
 |---|---|---|---|
 | id | int | no | Primary key. |
 | trip_id | string | no | FK to trips.id, unique. |
-| features | json | no | distance_km, duration_min, night_driving_share, events_per_100km, mean_speed_ms, max_speed_ms, speeding_time_share, route. |
+| features | json | no | distance_km, duration_min, night_driving_share, events_per_100km, mean_speed_ms, max_speed_ms, speeding_time_share. No route or coordinates are stored. |
 | created_at | timestamptz | no | Row creation time. |
 
 ### trip_scores
@@ -188,8 +188,8 @@ Purpose: detected or reported crashes.
 | trip_id | string | yes | FK to trips.id when linked to a trip. |
 | type | string | no | Incident kind; currently crash. |
 | time | timestamptz | no | When it happened. |
-| lat | float | yes | Latitude, degrees. |
-| lon | float | yes | Longitude, degrees. |
+| lat | float | yes | Deprecated, always NULL, dropped in migration 0005 (P3). |
+| lon | float | yes | Deprecated, always NULL, dropped in migration 0005 (P3). |
 | peak_g | float | yes | Peak acceleration in g. |
 | confirmed | string | yes | Driver answer; null until confirmed. |
 | sensor_snapshot | json | yes | peak_g, imu_samples, duration_ms around the crash. |
@@ -215,8 +215,8 @@ No extra index on `trip_chunks.trip_id` (leading column of `uq_trip_chunk`) or o
 | Field | Values | Meaning / where set |
 |---|---|---|
 | trips.status | uploading, processing, done, failed | Trip lifecycle, see below. |
-| trips.trip_type | driver, passenger, transit, unknown | classify.py sets transit/driver/unknown; user label sets driver/passenger. Only driver (and user-labelled unknown) trips are scored. Unknown trips unlabelled for 7 days stop counting. |
-| trips.label_source | bluetooth, rules, user (or null) | bluetooth: car Bluetooth connected; rules: classifier rules (transit); user: manual label, never overwritten. Null for unknown. Reports show null as "unlabelled". |
+| trips.trip_type | driver, passenger, transit, unknown | classify.py sets driver/unknown (transit is only a user label or legacy value); user label sets driver/passenger. Only driver (and user-labelled unknown) trips are scored. Unknown trips unlabelled for 7 days stop counting. |
+| trips.label_source | bluetooth, rules, user (or null) | bluetooth: car Bluetooth connected; rules: classifier rules; user: manual label, never overwritten. Null for unknown. Reports show null as "unlabelled". |
 | events.type | harsh_brake, harsh_accel, sharp_corner, speeding | app/pipeline/events.py `_detect_events`. |
 | trip_scores.tier | A, B, C, D, E | model.score_to_tier: A >= 90, B >= 75, C >= 60, D >= 40, E below 40. |
 | incidents.type | crash | pipeline crash detection and POST /v1/me/incidents (free string, default crash). |

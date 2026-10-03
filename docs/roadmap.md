@@ -66,11 +66,17 @@ Open (the director escalates these when the increment needs them):
       UnoCSS build.
 - [x] F2 Overview page: totals, tier distribution, average multiplier (HTMX partials).
 - [x] F3 Drivers list with filter, sort, pagination; driver detail.
-- [x] F4 Trip detail with Leaflet route and event markers.
+- [x] F4 Trip detail with score, explanation and events table (map removed for privacy, see P4).
 - [x] F5 Incidents page.
 - [ ] Later: dashboard hardening: login rate limiting/lockout, server-side session revocation,
       security headers (CSP).
-- [ ] Later: row-to-marker highlight on hover and focus (F4 follow-up).
+
+## Privacy (Option B)
+Decision: GPS is used on the phone for speed only; latitude and longitude are never transmitted or stored.
+- [x] P1 Mobile and API stop sending/accepting coordinates (requests with coordinates get 422).
+- [x] P2 Pipeline, API and mobile are coordinate-free.
+- [x] P4 Dashboard and docs: no map, no locations, Leaflet removed.
+- [ ] P3 (next) Migration 0005 drops `events.lat/lon`, `incidents.lat/lon`.
 
 ## Phase G - Docs
 - [ ] G1 Rewrite `docs/handoff.md` and `contracts/` from the generated OpenAPI contract.
