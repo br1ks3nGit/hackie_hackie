@@ -51,7 +51,7 @@ Open (the director escalates these when the increment needs them):
       types and unused deps, `backend/.env.example` on Postgres (user edit: file is agent-denied).
 
 ## Phase C - Known bugs
-- [ ] C1 `POST /v1/me/incidents`: check the trip belongs to the driver.
+- [x] C1 `POST /v1/me/incidents`: check the trip belongs to the driver.
 - [x] C2 Pipeline error path rolls back before marking a trip failed (team, 66830b7).
 
 ## Phase E - Mobile

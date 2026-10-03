@@ -10,6 +10,7 @@ build/
 # AI
 CLAUDE.md
 .claude
+.agents
 
 # Database
 *.db

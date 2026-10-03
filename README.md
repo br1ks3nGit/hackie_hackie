@@ -697,7 +697,6 @@ This is a hackathon POC. Be aware of the following.
 - Anyone can call `register`; there is no rate limiting. One shared insurer key, no
   per-user insurer accounts.
 - The model is loaded with `pickle`; only deploy trusted model files.
-- `POST /v1/me/incidents` does not check that `trip_id` belongs to the driver (C1).
 - Insurer listing computes each driver's score in a loop, which will not scale beyond
   hundreds of drivers.
 
@@ -713,9 +712,9 @@ Full plan and status in [docs/roadmap.md](docs/roadmap.md). One line is one smal
 - Done: A1 uv tooling, A2 lint baseline, A3 CI, A4 PostgreSQL + Alembic, A5 Docker image and
   compose for the API, A6 Pydantic v2 and timezone-aware timestamps, A8 typed models, A10
   readable schema (allowed values, field docs, TripFeatures, data-model.md), A9 foreign-key
-  indexes, A7 size limits (pipeline package, routers split), C2 pipeline error path fix.
+  indexes, A7 size limits (pipeline package, routers split), C2 pipeline error path fix,
+  C1 incident trip ownership check, E1 configurable mobile API base URL.
 - Next (phase A): A11 cleanups.
-- Bugs: C1 incident trip ownership check.
 - Mobile (phase E): send `car_connected`, optional trip labelling,
   NativeWind.
 - Insurer dashboard (phase F): staff login, overview, drivers list and detail, trip map,
