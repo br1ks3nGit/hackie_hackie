@@ -55,7 +55,7 @@ Open (the director escalates these when the increment needs them):
 - [x] C2 Pipeline error path rolls back before marking a trip failed (team, 66830b7).
 
 ## Phase E - Mobile
-- [ ] E1 Config-driven `API_BASE` (Expo config / env) so the app works on a real phone.
+- [x] E1 Config-driven `API_BASE` (Expo config / env) so the app works on a real phone.
 - [ ] E2 Send `car_connected` (Bluetooth) with chunks so real trips score automatically
       (the simulator already sends it).
 - [ ] E3 (optional) Label unknown trips (driver / passenger).

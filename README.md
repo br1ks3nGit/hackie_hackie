@@ -132,7 +132,7 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
     |-- App.tsx                  single screen: register, record, score, last trip
     |-- app.json                 permissions (location, motion, background)
     `-- src/
-        |-- api/client.ts        typed API client (API_BASE is hardcoded)
+        |-- api/client.ts        typed API client (base URL from src/config.ts)
         |-- sensors/SensorManager.ts   accelerometer / gyroscope / GPS subscriptions
         |-- sensors/TripDetector.ts    trip start/end by speed, chunking and upload
         |-- storage/TripStorage.ts     AsyncStorage helpers (not wired into App.tsx)
@@ -279,13 +279,21 @@ npm run ts:check      # TypeScript check
 The app registers a driver on first launch, records consent automatically (version "1.0"),
 stores the id and API key in AsyncStorage, and shows a score plus the last trip.
 
-**API_BASE is hardcoded.** `mobile/src/api/client.ts` line 1 is
-`const API_BASE = 'http://localhost:8000/v1';`. That works for a simulator on the same
-machine only. On a real phone, change it to your computer's LAN address (for example
-`http://192.168.1.20:8000/v1`), and make sure both devices are on the same network. The
-API must listen on all interfaces: compose `api` already does (`0.0.0.0:8000`); for local
-uvicorn use `--host 0.0.0.0` as above. The phone reaches the API at
-`http://<laptop LAN IP>:8000`. A config-driven value is roadmap item E1.
+#### Point the app at the backend
+
+The base URL comes from `EXPO_PUBLIC_API_BASE_URL` (default `http://localhost:8000`, which
+only works in the iOS simulator and web). `/v1` is appended automatically; do not include it.
+
+```bash
+ipconfig getifaddr en0     # macOS: your laptop LAN IP
+EXPO_PUBLIC_API_BASE_URL=http://192.168.x.y:8000 npx expo start
+```
+
+- The phone and the laptop must be on the same Wi-Fi network.
+- The API must listen on all interfaces: compose `api` already does (`0.0.0.0:8000`); for
+  local uvicorn use `--host 0.0.0.0`.
+- Android emulator: use `http://10.0.2.2:8000`.
+- If setup fails, the error alert shows the URL the app tried.
 
 ## 6. API overview
 
@@ -673,7 +681,6 @@ This is a hackathon POC. Be aware of the following.
   and fall to `unknown`.
 
 **Mobile**
-- `API_BASE` is hardcoded to localhost (E1).
 - The app does **not** send `car_connected` yet (E2), so real trips classify as `unknown` and
   do not count toward the score until labelled `driver`. Only the simulator sends it.
 - The app has no screens for labelling trips (E3), incidents, or data deletion, although the
@@ -706,9 +713,9 @@ Full plan and status in [docs/roadmap.md](docs/roadmap.md). One line is one smal
   compose for the API, A6 Pydantic v2 and timezone-aware timestamps, A8 typed models, A10
   readable schema (allowed values, field docs, TripFeatures, data-model.md), A9 foreign-key
   indexes, A7 size limits (pipeline package, routers split), C2 pipeline error path fix,
-  C1 incident trip ownership check.
+  C1 incident trip ownership check, E1 configurable mobile API base URL.
 - Next (phase A): A11 cleanups.
-- Mobile (phase E): configurable `API_BASE`, send `car_connected`, optional trip labelling,
+- Mobile (phase E): send `car_connected`, optional trip labelling,
   NativeWind.
 - Insurer dashboard (phase F): staff login, overview, drivers list and detail, trip map,
   incidents (Jinja2 + HTMX + Alpine.js + UnoCSS, served by the API).

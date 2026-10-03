@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Button, StyleSheet, Alert, ScrollView } from 'react-native';
+import { API_BASE_URL } from './src/config';
 import { TripDetector } from './src/sensors/TripDetector';
 import { startSensors, stopSensors } from './src/sensors/SensorManager';
 import {
@@ -62,7 +63,11 @@ export default function App() {
       await refreshSummary(response.api_key);
     } catch (err) {
       console.error('Failed to initialize driver', err);
-      Alert.alert('Setup Error', 'Could not connect to server. Make sure the backend is running.');
+      Alert.alert(
+        'Setup Error',
+        `Could not reach ${API_BASE_URL}. Make sure the backend is running and set ` +
+          'EXPO_PUBLIC_API_BASE_URL to http://<laptop LAN IP>:8000',
+      );
     }
   };
 
