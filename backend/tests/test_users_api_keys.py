@@ -199,14 +199,20 @@ def test_deactivate_other_user_and_block_self(admin_client: TestClient) -> None:
     with SessionLocal() as db:
         other = user_service.create_user(db, "grace", GOOD_PASSWORD)
         other_id = other.id
-        admin_id = user_service.get_by_username(db, ADMIN_USER).id
+        admin = user_service.get_by_username(db, ADMIN_USER)
+        assert admin is not None
+        admin_id = admin.id
     _post(admin_client, "/dashboard/users", f"/dashboard/users/{other_id}/active", active="false")
     with SessionLocal() as db:
-        assert not db.get(User, other_id).is_active
+        other_user = db.get(User, other_id)
+        assert other_user is not None
+        assert not other_user.is_active
     _post(admin_client, "/dashboard/users", f"/dashboard/users/{admin_id}/active", active="false")
     assert "cannot deactivate your own account" in admin_client.get("/dashboard/users").text
     with SessionLocal() as db:
-        assert db.get(User, admin_id).is_active
+        admin_user = db.get(User, admin_id)
+        assert admin_user is not None
+        assert admin_user.is_active
 
 
 def test_deactivated_user_session_ends(client: TestClient) -> None:
@@ -216,7 +222,9 @@ def test_deactivated_user_session_ends(client: TestClient) -> None:
     assert login(client, GOOD_PASSWORD, "henry").status_code == 303
     assert client.get("/dashboard").status_code == 200
     with SessionLocal() as db:
-        user_service.set_active(db, user_service.get_by_username(db, "henry"), False)
+        henry = user_service.get_by_username(db, "henry")
+        assert henry is not None
+        user_service.set_active(db, henry, False)
     assert client.get("/dashboard").status_code == 303
 
 

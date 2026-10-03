@@ -165,14 +165,13 @@ def test_malformed_hash_never_verifies(stored: str) -> None:
     assert not verify_password("anything", stored)
 
 
-def test_settings_ignore_legacy_credentials_now_stored_in_postgres() -> None:
-    settings = Settings(
-        session_secret="s" * 32,
-        insurer_api_key="k",
-        driver_api_key_salt="s",
-        dashboard_password_hash="x",
-        _env_file=None,
-    )
+def test_settings_ignore_legacy_credentials_now_stored_in_postgres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("INSURER_API_KEY", "k")
+    monkeypatch.setenv("DRIVER_API_KEY_SALT", "s")
+    monkeypatch.setenv("DASHBOARD_PASSWORD_HASH", "x")
+    settings = Settings(session_secret="s" * 32, _env_file=None)
     assert not hasattr(settings, "insurer_api_key")
     assert not hasattr(settings, "dashboard_password_hash")
     assert settings.session_https_only is False
