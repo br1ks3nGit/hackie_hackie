@@ -1,17 +1,18 @@
-import './global.css';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   Switch,
   Pressable,
+  StyleSheet,
   Alert,
   ScrollView,
   AccessibilityInfo,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { SWITCH_TRACK_OFF, SWITCH_TRACK_ON } from './src/tokens';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { theme, switchColors } from './src/theme';
+import { Card, CardSm, PrimaryButton, SecondaryButton } from './src/ui';
 import { API_BASE_URL } from './src/config';
 import { TripDetector } from './src/sensors/TripDetector';
 import { startSensors, stopSensors } from './src/sensors/SensorManager';
@@ -38,27 +39,7 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-// Literal class names so NativeWind can see them at build time
-const TIER_CHIP: Record<string, string> = {
-  A: 'bg-tier-a-soft',
-  B: 'bg-tier-b-soft',
-  C: 'bg-tier-c-soft',
-  D: 'bg-tier-d-soft',
-  E: 'bg-tier-e-soft',
-};
-const TIER_CHIP_TEXT: Record<string, string> = {
-  A: 'text-tier-a-ink',
-  B: 'text-tier-b-ink',
-  C: 'text-tier-c-ink',
-  D: 'text-tier-d-ink',
-  E: 'text-tier-e-ink',
-};
-
-const PRIMARY_BTN =
-  'min-h-11 items-center justify-center rounded-md bg-primary px-3 active:bg-primary-active';
-const SECONDARY_BTN =
-  'min-h-11 items-center justify-center rounded-md border border-primary bg-surface ' +
-  'px-3 active:bg-surface-muted';
+const TIER_COLORS: Record<string, { soft: string; ink: string }> = theme.colors.tier;
 
 const STORAGE_KEYS = {
   DRIVER_ID: 'drivescore:driver_id',
@@ -67,6 +48,14 @@ const STORAGE_KEYS = {
 };
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <Main />
+    </SafeAreaProvider>
+  );
+}
+
+function Main() {
   const [recording, setRecording] = useState(false);
   const [inTrip, setInTrip] = useState(false);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
@@ -84,8 +73,8 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const { fontScale } = useWindowDimensions();
   const stackButtons = fontScale > 1.3;
-  // flex-1 only in a row: in a stacked column it would collapse the buttons to min height
-  const btnFlex = stackButtons ? '' : 'flex-1';
+  // flex: 1 only in a row: in a stacked column it would collapse the buttons to min height
+  const btnFlex = stackButtons ? undefined : styles.flex1;
 
   const detectorRef = useRef<TripDetector | null>(null);
   // Read by TripDetector at chunk-build time, so flipping mid-trip applies to the next chunk
@@ -280,186 +269,200 @@ export default function App() {
     }
   };
 
-  const tierKey = summary?.tier.toUpperCase() ?? '';
+  const tier = TIER_COLORS[summary?.tier.toUpperCase() ?? ''] ?? TIER_COLORS.fallback;
   const messageText = labelError ?? loadError ?? labelMessage ?? '';
-  const messageClass = labelError || loadError
-    ? 'mt-2 rounded-lg bg-danger-soft p-4 text-base text-danger-ink'
-    : messageText
-      ? 'mt-2 rounded-lg bg-success-soft p-4 text-base text-success-ink'
-      : '';
-  const disabledClass = labelling ? 'opacity-50' : '';
+  const isError = Boolean(labelError || loadError);
+  const messageColors = isError ? theme.colors.danger : theme.colors.success;
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
-    <ScrollView className="flex-1 px-5 pt-4">
-      <Text className="mb-2 text-3xl font-bold text-text">DriveScore</Text>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <Text style={styles.eyebrow}>Hong Kong visitor motor cover</Text>
+        <Text style={styles.title}>BT</Text>
+        {driverId && <Text style={styles.caption}>Driver: {driverId.substring(0, 12)}...</Text>}
 
-      {driverId && (
-        <Text className="mb-4 text-sm text-text-muted">Driver: {driverId.substring(0, 12)}...</Text>
-      )}
-
-      {summary && (
-        <View className="mb-4 gap-1 rounded-lg bg-surface-muted p-4">
-          <Text className="text-sm text-text-muted">Your Score</Text>
-          <View className="flex-row items-center gap-3">
-            <Text className="text-5xl font-bold text-text">{summary.score}</Text>
-            <View
-              className={`rounded-sm px-2 py-0.5 ${TIER_CHIP[tierKey] ?? 'bg-border'}`}
-              accessible
-              accessibilityLabel={`Tier ${summary.tier}`}
-            >
-              <Text className={`text-xs font-semibold ${TIER_CHIP_TEXT[tierKey] ?? 'text-text'}`}>
-                {summary.tier}
-              </Text>
-            </View>
-          </View>
-          <Text className="text-base text-text">
-            Premium Multiplier: {summary.premium_multiplier}x
-          </Text>
-          <Text className="text-base text-text">Trend: {summary.trend}</Text>
-          <Text className="text-base text-text">Trips (90d): {summary.total_trips_90d}</Text>
-        </View>
-      )}
-
-      <Pressable
-        className="min-h-12 flex-row items-center justify-between py-2"
-        onPress={() => changeDrivingMode(!drivingMode)}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: drivingMode }}
-        accessibilityLabel="I'm driving"
-      >
-        <Text className="text-base font-semibold text-text">
-          I'm driving: {drivingMode ? 'On' : 'Off'}
-        </Text>
-        <Switch
-          value={drivingMode}
-          onValueChange={changeDrivingMode}
-          accessible={false}
-          trackColor={{ true: SWITCH_TRACK_ON, false: SWITCH_TRACK_OFF }}
-        />
-      </Pressable>
-      <Text className="mb-4 text-sm text-text-muted">
-        Turn on when you are the driver. Trips recorded while off do not count toward your score
-        unless you confirm them later.
-      </Text>
-
-      <Pressable
-        className={`min-h-11 items-center justify-center rounded-md px-3 ${
-          recording ? 'bg-danger active:bg-danger-ink' : 'bg-primary active:bg-primary-active'
-        }`}
-        onPress={toggleRecording}
-        accessibilityRole="button"
-        accessibilityLabel={recording ? 'Stop Recording' : 'Start Recording'}
-      >
-        <Text className="text-base font-semibold text-primary-fg">
-          {recording ? 'Stop Recording' : 'Start Recording'}
-        </Text>
-      </Pressable>
-
-      {recording && (
-        <View className="mt-5 rounded-lg bg-success-soft p-4">
-          <Text className="text-base font-semibold text-success-ink">Recording trip</Text>
-          <Text className="text-base text-success-ink">
-            Status: {inTrip ? 'In trip' : 'Recording (idle)'}
-          </Text>
-          <Text className="text-base text-success-ink">Driving: {drivingMode ? 'Yes' : 'No'}</Text>
-          <Text className="text-base text-success-ink">Chunks uploaded: {chunkCount}</Text>
-          {currentTripId && (
-            <Text className="text-base text-success-ink">
-              Trip: {currentTripId.substring(0, 16)}...
-            </Text>
-          )}
-        </View>
-      )}
-
-      <Text className={messageClass} accessibilityLiveRegion="polite">
-        {messageText}
-      </Text>
-      {loadError && apiKey && (
-        <Pressable
-          className="min-h-11 self-start justify-center px-3"
-          onPress={() => refreshToConfirm(apiKey)}
-          accessibilityRole="button"
-          accessibilityLabel="Retry loading trips to confirm"
-        >
-          <Text className="text-base font-semibold text-primary">Retry</Text>
-        </Pressable>
-      )}
-
-      {toConfirm.length > 0 && (
-        <View className="mt-5 gap-3 rounded-lg bg-warning-soft p-4">
-          <Text className="text-base font-semibold text-warning-ink" accessibilityRole="header">
-            Trips to confirm
-          </Text>
-          {toConfirm.map((trip) => {
-            const started = new Date(trip.started_at);
-            const time = formatTime(trip.started_at);
-            const date = started.toLocaleDateString([], {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-            });
-            return (
-              <View key={trip.trip_id} className="gap-3 rounded-lg bg-surface p-4">
-                <Text className="text-base font-semibold text-text">
-                  {date} {time}
-                  {'\n'}
-                  {trip.distance_km.toFixed(1)} km
-                </Text>
-                <View className={`gap-2 ${stackButtons ? 'flex-col' : 'flex-row'}`}>
-                  <Pressable
-                    className={`${PRIMARY_BTN} ${btnFlex} ${disabledClass}`}
-                    disabled={labelling}
-                    onPress={() => confirmTrip(trip, 'driver')}
-                    accessibilityRole="button"
-                    accessibilityLabel={`I was driving, trip on ${date} at ${time}`}
-                    accessibilityState={{ disabled: labelling }}
-                  >
-                    <Text className="text-center text-base font-semibold text-primary-fg">
-                      I was driving
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    className={`${SECONDARY_BTN} ${btnFlex} ${disabledClass}`}
-                    disabled={labelling}
-                    onPress={() => confirmTrip(trip, 'passenger')}
-                    accessibilityRole="button"
-                    accessibilityLabel={`I was a passenger, trip on ${date} at ${time}`}
-                    accessibilityState={{ disabled: labelling }}
-                  >
-                    <Text className="text-center text-base font-semibold text-primary">
-                      I was a passenger
-                    </Text>
-                  </Pressable>
-                </View>
+        {summary && (
+          <Card style={styles.section}>
+            <Text style={styles.caption}>Your Score</Text>
+            <View style={styles.scoreRow}>
+              <Text style={styles.display}>{summary.score}</Text>
+              <View
+                style={[styles.chip, { backgroundColor: tier.soft }]}
+                accessible
+                accessibilityLabel={`Tier ${summary.tier}`}
+              >
+                <Text style={[theme.type.chip, { color: tier.ink }]}>{summary.tier}</Text>
               </View>
-            );
-          })}
-        </View>
-      )}
+            </View>
+            <Text style={styles.body}>Premium Multiplier: {summary.premium_multiplier}x</Text>
+            <Text style={styles.body}>Trend: {summary.trend}</Text>
+            <Text style={styles.body}>Trips (90d): {summary.total_trips_90d}</Text>
+          </Card>
+        )}
 
-      {lastTrip && (
-        <View className="mb-10 mt-5 gap-1 rounded-lg bg-surface-muted p-4">
-          <Text className="text-base font-semibold text-text">Last Trip</Text>
-          <Text className="text-base text-text">Score: {lastTrip.score ?? 'N/A'}</Text>
-          <Text className="text-base text-text">
-            Distance: {lastTrip.distance_km.toFixed(2)} km
-          </Text>
-          <Text className="text-base text-text">
-            Duration: {lastTrip.duration_min.toFixed(1)} min
-          </Text>
-          {lastTrip.explanation && (
-            <Text className="text-base italic text-text-muted">{lastTrip.explanation}</Text>
-          )}
-          <Text className="text-base text-text">Events: {lastTrip.events.length}</Text>
-          {lastTrip.events.map((e, idx) => (
-            <Text key={idx} className="ml-2 text-sm text-text-muted">
-              {e.type} {e.peak_g ? `(${e.peak_g.toFixed(2)}g)` : ''}
+        <CardSm style={[styles.section, styles.switchCard]}>
+          <Pressable
+            style={styles.switchRow}
+            onPress={() => changeDrivingMode(!drivingMode)}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: drivingMode }}
+            accessibilityLabel="I'm driving"
+          >
+            <Text style={styles.bodyStrong}>I'm driving: {drivingMode ? 'On' : 'Off'}</Text>
+            <Switch
+              value={drivingMode}
+              onValueChange={changeDrivingMode}
+              accessible={false}
+              trackColor={{ true: switchColors.on, false: switchColors.off }}
+              thumbColor={switchColors.thumb}
+            />
+          </Pressable>
+        </CardSm>
+        <Text style={[styles.caption, styles.section]}>
+          Turn on when you are the driver. Trips recorded while off do not count toward your score
+          unless you confirm them later.
+        </Text>
+
+        <PrimaryButton
+          style={styles.section}
+          danger={recording}
+          label={recording ? 'Stop Recording' : 'Start Recording'}
+          onPress={toggleRecording}
+          accessibilityRole="button"
+          accessibilityLabel={recording ? 'Stop Recording' : 'Start Recording'}
+        />
+
+        {recording && (
+          <CardSm bg={theme.colors.success.soft} style={styles.section}>
+            <Text style={styles.successStrong}>Recording trip</Text>
+            <Text style={styles.successText}>
+              Status: {inTrip ? 'In trip' : 'Recording (idle)'}
             </Text>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+            <Text style={styles.successText}>Driving: {drivingMode ? 'Yes' : 'No'}</Text>
+            <Text style={styles.successText}>Chunks uploaded: {chunkCount}</Text>
+            {currentTripId && (
+              <Text style={styles.successText}>Trip: {currentTripId.substring(0, 16)}...</Text>
+            )}
+          </CardSm>
+        )}
+
+        <Text
+          style={
+            messageText
+              ? [styles.message, { backgroundColor: messageColors.soft, color: messageColors.ink }]
+              : undefined
+          }
+          accessibilityLiveRegion="polite"
+        >
+          {messageText}
+        </Text>
+        {loadError && apiKey && (
+          <Pressable
+            style={styles.retry}
+            onPress={() => refreshToConfirm(apiKey)}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading trips to confirm"
+          >
+            <Text style={[styles.bodyStrong, { color: theme.colors.jadeInk }]}>Retry</Text>
+          </Pressable>
+        )}
+
+        {toConfirm.length > 0 && (
+          <Card bg={theme.colors.warning.soft} style={styles.section}>
+            <Text style={styles.warningHeader} accessibilityRole="header">
+              Trips to confirm
+            </Text>
+            {toConfirm.map((trip) => {
+              const started = new Date(trip.started_at);
+              const time = formatTime(trip.started_at);
+              const date = started.toLocaleDateString([], {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+              });
+              return (
+                <CardSm key={trip.trip_id} style={styles.tripRow}>
+                  <Text style={styles.bodyStrong}>
+                    {date} {time}
+                    {'\n'}
+                    {trip.distance_km.toFixed(1)} km
+                  </Text>
+                  <View style={stackButtons ? styles.colGap : styles.rowGap}>
+                    <PrimaryButton
+                      style={btnFlex}
+                      label="I was driving"
+                      disabled={labelling}
+                      onPress={() => confirmTrip(trip, 'driver')}
+                      accessibilityRole="button"
+                      accessibilityLabel={`I was driving, trip on ${date} at ${time}`}
+                      accessibilityState={{ disabled: labelling }}
+                    />
+                    <SecondaryButton
+                      style={btnFlex}
+                      label="I was a passenger"
+                      disabled={labelling}
+                      onPress={() => confirmTrip(trip, 'passenger')}
+                      accessibilityRole="button"
+                      accessibilityLabel={`I was a passenger, trip on ${date} at ${time}`}
+                      accessibilityState={{ disabled: labelling }}
+                    />
+                  </View>
+                </CardSm>
+              );
+            })}
+          </Card>
+        )}
+
+        {lastTrip && (
+          <Card style={[styles.section, styles.lastTrip]}>
+            <Text style={styles.bodyStrong}>Last Trip</Text>
+            <Text style={styles.body}>Score: {lastTrip.score ?? 'N/A'}</Text>
+            <Text style={styles.body}>Distance: {lastTrip.distance_km.toFixed(2)} km</Text>
+            <Text style={styles.body}>Duration: {lastTrip.duration_min.toFixed(1)} min</Text>
+            {lastTrip.explanation && <Text style={styles.explanation}>{lastTrip.explanation}</Text>}
+            <Text style={styles.body}>Events: {lastTrip.events.length}</Text>
+            {lastTrip.events.map((e, idx) => (
+              <Text key={idx} style={styles.caption}>
+                {e.type} {e.peak_g ? `(${e.peak_g.toFixed(2)}g)` : ''}
+              </Text>
+            ))}
+          </Card>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
+
+const { colors, radii, space, type } = theme;
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.cream },
+  content: { paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: space.xxl },
+  section: { marginTop: space.lg },
+  flex1: { flex: 1 },
+  eyebrow: { ...type.eyebrow, color: colors.textMuted },
+  title: { ...type.title, color: colors.ink },
+  display: { ...type.display, color: colors.ink },
+  body: { ...type.body, color: colors.ink },
+  bodyStrong: { ...type.bodyStrong, color: colors.ink },
+  caption: { ...type.caption, color: colors.textMuted },
+  explanation: { ...type.body, color: colors.textMuted, fontStyle: 'italic' },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  chip: { borderRadius: radii.chip, paddingHorizontal: space.sm, paddingVertical: 2 },
+  switchCard: { minHeight: theme.minSwitchRow },
+  switchRow: {
+    minHeight: theme.minTouch,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  successStrong: { ...type.bodyStrong, color: colors.success.ink },
+  successText: { ...type.body, color: colors.success.ink },
+  message: { ...type.body, marginTop: space.sm, padding: space.lg, borderRadius: radii.cardSm },
+  retry: { minHeight: theme.minTouch, alignSelf: 'flex-start', justifyContent: 'center' },
+  warningHeader: { ...type.bodyStrong, color: colors.warning.ink, marginBottom: space.md },
+  tripRow: { marginTop: space.md },
+  rowGap: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
+  colGap: { flexDirection: 'column', gap: space.sm, marginTop: space.md },
+  lastTrip: { marginBottom: space.xl },
+});

@@ -1,7 +1,7 @@
 # DriveScore Design System
 
-One token set for the insurer dashboard (Jinja2 + HTMX + Alpine + UnoCSS `presetWind`) and the mobile app
-(Expo + NativeWind). Class names are Tailwind-compatible. Light theme only (dark mode out of scope for the POC).
+Tokens for the insurer dashboard (Jinja2 + HTMX + Alpine + UnoCSS `presetWind`), sections 1-7. The mobile app
+(Expo, plain `StyleSheet`, "BT" theme) has its own token set in section 8 and does not share these. Light theme only (dark mode out of scope for the POC).
 Contrast: WCAG 2.2 AA, 4.5:1 body text, 3:1 large text (>= 24px, or >= 18.66px bold) and UI components/graphics.
 Ratios below were computed with the WCAG relative-luminance formula.
 
@@ -292,26 +292,9 @@ Bar chart, one bar per tier A..E in tier solid colors, x-axis labels "A".."E", y
 Provide a visually-hidden or toggled data table `<table class="sr-only">` (Tier, Scored trips) as text alternative; canvas `role="img" aria-label="Scored trips per tier: A 10, B 20, ..."`.
 Grid lines `border` color, tick text `text-muted` 12px. Size `h-64`.
 
-## 4. Mobile components (NativeWind; match E2/E3 in `mobile/App.tsx`)
+## 4. Mobile components
 
-Use token class names; pressed state is `active:` variant or `Pressable` style callback. All touchables: `accessibilityRole`, `accessibilityLabel`, min 44x44.
-Screen: `flex-1 bg-surface px-5 pt-[60px]` -> use `px-5 pt-4` (16px) inside a `SafeAreaView`; the safe area supplies the status-bar inset, so do not use `pt-16`.
-
-| Component | Classes / spec |
-|---|---|
-| Title | `text-3xl font-bold text-text` (was 28) |
-| Score card | `bg-surface-muted rounded-lg p-4`; label `text-sm text-text-muted`; score `text-5xl font-bold text-text` with tier chip next to it; multiplier `text-base text-text`; trend text word ("Improving") with arrow glyph. Number uses `text` color (not tier color) so contrast holds; tier is the chip. Existing `#007AFF` score text is below 4.5:1 on #f2f2f7 (about 3.6:1), so it must change to `text-text`. |
-| Tier chip | `rounded-sm px-2 py-0.5 text-xs font-semibold bg-tier-x-soft text-tier-x-ink`, letter always shown, `accessibilityLabel="Tier A"` |
-| Switch row ("I'm driving") | `flex-row items-center justify-between min-h-12 py-2`; label `text-base text-text`, caption `text-sm text-text-muted`; RN `Switch` `trackColor={{true: primary, false: border-strong}}` (RN props take hex, so the track colors are mirrored in `mobile/src/tokens.ts`; change both places when `primary` or `border-strong` changes), `accessibilityRole="switch"`, `accessibilityState={{checked}}`; the whole row is the label. Restate state in text ("On: trips are labelled as driving"). |
-| Recording status | Banner `rounded-lg p-4`: recording `bg-success-soft` + `text-success-ink` text "Recording trip" with dot; idle `bg-surface-muted text-text`. Always visible while recording. Replaces current `#e5f5e5` / `#fff4e0` banners (warning variant `bg-warning-soft text-warning-ink`). |
-| Banner (error/info) | `rounded-lg p-4` + `bg-{danger,info,warning}-soft` text `{x}-ink` with prefix word ("Error:", "Saved:"); `accessibilityLiveRegion="polite"` and `AccessibilityInfo.announceForAccessibility` as now. |
-| List row (trip to confirm) | `bg-surface-muted rounded-lg p-4 gap-3`; title `text-base font-semibold text-text` (time, distance km), meta `text-sm text-text-muted` (transit line / score + tier chip), buttons in `flex-row gap-2` (stack to `flex-col` when `fontScale > 1.3`, existing logic). Buttons are `flex-1` only in the row layout; when stacked they are full width without `flex-1` (flex-1 in a column collapses height at large font). |
-| Trips-to-confirm container | Wrapper `bg-warning-soft rounded-lg p-4 gap-3` with a heading `text-base font-semibold text-warning-ink`; each trip row inside is a `bg-surface rounded-lg p-4 gap-3` list row (surface rows on the warning-soft container, so row text uses `text-text` / `text-text-muted`, not `ink`). |
-| Summary card | `bg-surface-muted rounded-lg p-4 gap-2`; explanation sentence `text-base text-text-muted`; event lines (one per event type, e.g. "3 harsh brakes") `text-sm text-text-muted`. Text only, no color-coding; used for the post-trip summary and the score explanation. |
-| Primary button | `min-h-11 rounded-md px-3 items-center justify-center bg-primary active:bg-primary-active`; text `text-base font-semibold text-primary-fg`. Disabled `opacity-50`. |
-| Secondary button | `min-h-11 rounded-md px-3 items-center justify-center bg-surface border border-primary active:bg-surface-muted`; text `text-base font-semibold text-primary`. |
-| Loading | `ActivityIndicator color=primary` + text "Loading..." ; skeleton `bg-surface-muted rounded-lg h-20`. |
-| Empty | `text-base text-text-muted` centered: "No trips to confirm." |
+Superseded by section 8 (BT theme, plain React Native `StyleSheet`). Mobile no longer uses NativeWind or the dashboard tokens.
 
 ## 5. Page layouts (dashboard)
 
@@ -344,9 +327,9 @@ Fragment routes return partials from `app/templates/partials/` (detected via `HX
 - Partial `partials/incidents_table.html` polling `hx-trigger="every 30s"` (aria-live off for poll to avoid chatter; announce only new count via `HX-Trigger`).
 - Empty state "No incidents recorded."
 
-## 6. Token names (identical in both configs)
+## 6. Dashboard token names (`uno.config.ts`)
 
-Both configs use these exact keys. `DEFAULT` gives the bare class (`bg-primary`). Hyphenated variants are written as nested keys.
+The dashboard config uses these exact keys. `DEFAULT` gives the bare class (`bg-primary`). Hyphenated variants are written as nested keys.
 
 ```
 colors: {
@@ -377,7 +360,7 @@ colors: {
 | Config | Where | Notes |
 |---|---|---|
 | UnoCSS | `backend/uno.config.ts` -> `theme.colors` (presetWind; nested objects are supported) | Also `theme.fontFamily.sans/mono`, `theme.boxShadow` (`sm`, `md` from 2.4), `theme.ringColor`/colors `focus`. `shortcuts`: `btn`, `btn-primary`, `btn-secondary`, `btn-danger`, `btn-sm`, `btn-lg`, `input`, `kbd-focus`, `card`, `pill`, `tier-badge`. `safeList` all `tier-*`, `{status}-soft/ink`, `event-*` classes. |
-| NativeWind | `mobile/tailwind.config.js` -> `theme.extend.colors` | Same object, no `nav`/`focus`/`event` needed (harmless if kept). Radii/spacing/sizes use Tailwind defaults (match section 2). Content globs `./App.tsx`, `./src/**/*.{ts,tsx}`; preset `nativewind/preset`. Use hex strings only (no `rgb(var())`). |
+| (none) | `mobile/tailwind.config.js` | Removed in M1. Mobile tokens live in section 8 and `mobile/src/theme.ts`. |
 
 Chart.js reads the same hex values: coder exposes them to JS by copying from the Python-side constants or reading CSS vars; simplest is to hard-code the
 tier/event hex in one static JS module `static/js/tokens.js` that mirrors section 6 (comment it as mirror).
@@ -390,5 +373,68 @@ tier/event hex in one static JS module `static/js/tokens.js` that mirrors sectio
 - Don't use arbitrary values (`text-[#123]`, `p-[13px]`); add a token first.
 - Don't use `border` (#D1D5DB) as the only boundary of an input.
 - Don't build class names by string concat; use full literal strings or safelist.
-- Don't hard-code hex or font sizes in `mobile/` screens; use the token class names.
+- Don't hard-code hex, font sizes or spacing in `mobile/` screens; import from `mobile/src/theme.ts` (section 8).
 - Don't rely on hover; every hover action has a focus or tap equivalent.
+
+## 8. Mobile (BT theme; `mobile/src/theme.ts`, React Native `StyleSheet`)
+
+App name "BT" (Hong Kong visitor motor cover). Neumorphic style modelled on the reference web app (cream surface, soft dual shadows). Independent of sections 1-7: the dashboard keeps its own tokens. No NativeWind, no `className`. Light only. Hex only (reference oklch converted). Ratios are WCAG relative luminance.
+
+### 8.1 Colors
+
+| Token | Hex | Use |
+|---|---|---|
+| `cream` | #EDF0F6 | Screen and card background |
+| `ink` | #1A2230 | Body text, headings (13.98 on cream) |
+| `jade` | #199D78 | Fills only: primary button, bar, switch-on accent. Never text on cream (3.0) |
+| `jadeDeep` | #0E7357 | Switch on-track, pressed accents; white on it 5.82 |
+| `jadeInk` | #0B6B50 | Jade-colored text/links on cream (5.69) or white (6.5) |
+| `coral` | #E88253 | Fills only: low-score bar. Never text (2.37 on cream) |
+| `coralInk` | #A8440F | Coral-colored text on cream (5.26) |
+| `mist` | #99A6B8 | Decorative only (dividers, disabled fills, bar track tint). Not text: 2.16 on cream |
+| `textMuted` | #4F5B6E | Secondary text, captions (6.02 on cream, 6.88 on white, >= 5.6 on every soft below) |
+| `neuDark` | #CED5DF | Shadow, bottom-right |
+| `neuLight` | #FFFFFF | Shadow, top-left |
+| `white` | #FFFFFF | Text on `dangerSolid`/`jadeDeep`, thumb |
+| `onJade` | #1A2230 (= ink) | Text on `jade` fill: 4.66. White on jade is 3.42 and fails; do not use |
+| `controlOff` | #6B778A | Switch off-track, UI boundary (3.97 on cream, needs 3:1) |
+| `focus` | #1D4ED8 | Focus ring/outline if shown (5.87 on cream) |
+
+Semantic (soft = message background, ink = its text; all >= 4.5 incl. `textMuted`):
+
+| Key | soft | ink | Ratio ink/soft | Solid |
+|---|---|---|---|---|
+| `success` | #DDF3EA | #0B6B50 | 5.59 | `jadeDeep` |
+| `warning` | #FBEBD3 | #7A4A06 | 6.38 | - |
+| `danger` | #FBE4E0 | #8F2A1F | 6.86 | `dangerSolid` #B23A2E (white 5.94); pressed `dangerPressed` #8F2A1F (white 8+) |
+
+Tier chips (letter always shown; soft bg + ink text):
+
+| Tier | soft | ink | Ratio |
+|---|---|---|---|
+| A | #D3F0E4 | #0B5A43 | 6.78 |
+| B | #E4F0CC | #3F5A12 | 6.57 |
+| C | #FBEBD3 | #7A4A06 | 6.38 |
+| D | #FADCC8 | #8A3608 | 6.18 |
+| E | #FBD9D3 | #8F2A1F | 6.34 |
+
+Fallback chip (unknown tier): bg `mist`-tinted `#DDE2EA`, text `ink`.
+
+Score color: score number stays `ink`; the bar carries color (>= 80 jade, else coral) plus the numeric text, so color is never the only signal.
+
+### 8.2 Radii, spacing, type
+
+- Radii: `card` 26 (24-28), `cardSm` 18 (16-22), `chip` 12, `pill` 999 (bars, chips, switch).
+- Spacing (4 base): `xs` 4, `sm` 8, `md` 12, `lg` 16, `xl` 24, `xxl` 32. Screen horizontal padding 24, top 12.
+- Min touch target: 44 x 44 (`minTouch: 44`); switch row 48 (`minSwitchRow`).
+- Chip padding 8 x 2 (only off-grid value).
+- Type (system font now; M2 adds Plus Jakarta Sans for display weights and Noto Sans SC/TC for body, so keep `fontFamily` out of ad-hoc styles and read it from theme): `eyebrow` 13/18 medium `textMuted`; `title` 26/32 extrabold(800); `display` 48/52 bold (score); `body` 16/22 regular; `bodyStrong` 16/22 semibold(600); `caption` 14/20 `textMuted`; `chip` 12/16 bold. Never set `allowFontScaling={false}`; containers use `minHeight`, never fixed `height`, for text.
+
+### 8.3 Neumorphic shadows in React Native
+
+Reference shadows: raised `10 10 22 dark, -10 -10 22 light` (card), `6 6 14` (small), inset `3 3 6` (inset). RN has one shadow per View, so:
+- iOS raised: two stacked Views with the same radius and `cream` background. Outer wrapper: `shadowColor neuDark, shadowOffset {w:10,h:10}, shadowRadius 11 (RN radius ~ half of CSS blur), shadowOpacity 1`. Inner (or a sibling behind it): `shadowColor neuLight, shadowOffset {-10,-10}`. Inner holds the content. Small variant uses 6 / radius 7.
+- Android: `elevation` only (card 6, small 3) with `backgroundColor cream`; light highlight is dropped. Optionally a 1px `neuLight` top/left border on the inner View for a faint highlight.
+- Inset (iOS and Android; RN has no inset shadow): cream-tinted trough: `backgroundColor #E4E8F0`, 1px top/left border `neuDark`, 1px bottom/right border `neuLight`. Used for bar track and pressed/active states.
+- Never rely on shadow to show a boundary or state: pressed = inset look plus `opacity .9`; disabled = `opacity .5` plus `accessibilityState.disabled`. Shadows are decorative (3:1 not required), text contrast is on flat colors.
+- Respect `AccessibilityInfo.isReduceMotionEnabled` for any press animation; default none.

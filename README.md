@@ -150,7 +150,7 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 | Signal processing | numpy, pandas, scipy | 1.26.4, 2.2.3, 1.13.1 |
 | Model | pluggable pickle (scikit-learn style), placeholder rules by default | n/a |
 | Mobile | Expo SDK ~51, React Native 0.74.0, React 18.2.0, TypeScript ~5.3.3 | see `mobile/package.json` |
-| Mobile libs | expo-sensors ~13.0, expo-location ~17.0, async-storage 1.23.1, NativeWind 4 + Tailwind 3.4 | |
+| Mobile libs | expo-sensors ~13.0, expo-location ~17.0, async-storage 1.23.1, `StyleSheet` theme | |
 | Package manager | uv (backend), npm (mobile) | |
 | Lint / format / types | ruff, ty (ruff line length 100) | latest via `uv.lock` |
 | Tests | pytest 8.4.2, httpx 0.27.0, pytest-asyncio 0.24.0 | |
@@ -351,14 +351,16 @@ kept in AsyncStorage (`drivescore:driving_mode`) and is read at each chunk, so f
 mid-trip changes the share of "on" chunks from the next chunk. The backend needs more than 80%
 "on" chunks to classify the trip as `driver`; otherwise it is typically `unknown` and goes to labelling.
 
-#### Styling (NativeWind)
+#### Browser preview
 
-The app is styled with NativeWind v4 (Tailwind 3.4 classes via `className`). Design tokens (colors:
-`primary`, `surface`, `text`, `success/warning/danger/info` with `soft`/`ink`, `tier-a..e`) are in
-`mobile/tailwind.config.js` and use the same names and values as the dashboard's
-`backend/uno.config.ts` (see `docs/design-system.md`, "Token names"). Change a token in both
-files. Use literal class names (no string-built classes). `mobile/src/tokens.ts` mirrors two
-colors for the RN `Switch`, which cannot take classNames.
+`npm --prefix mobile run web` (or `npx expo start --web --port 19006`) previews the app in a
+browser. Use port 19006 because the API CORS default allows it. Sensors do not work on web.
+
+#### Styling (StyleSheet theme)
+
+The app uses plain React Native `StyleSheet` with the BT theme in `mobile/src/theme.ts` (colors,
+radii, spacing, type; see `docs/design-system.md` section 8). Shared primitives (cards, buttons)
+are in `mobile/src/ui.tsx`. No hard-coded colors or sizes in screens.
 
 #### Confirm trips
 
@@ -802,7 +804,7 @@ This is a hackathon POC. Be aware of the following.
   API supports them.
 - Registration and consent happen automatically on first launch; there is no consent screen.
 - There is no offline queue; a failed final upload is retried 3 times and then dropped.
-- Styling uses NativeWind classes; there is no dark mode.
+- Styling uses a `StyleSheet` theme; there is no dark mode.
 
 **Security and data**
 - Anyone can call `register`; there is no rate limiting. One shared insurer key, no
@@ -827,7 +829,7 @@ Full plan and status in [docs/roadmap.md](docs/roadmap.md). One line is one smal
   C1 incident trip ownership check, E1 configurable mobile API base URL.
 - Next (phase A): A11 cleanups.
 - Mobile (phase E): send `car_connected`, trip labelling (done, E3),
-  NativeWind.
+  BT redesign (phase M).
 - Insurer dashboard (phase F): staff login, overview, drivers list and detail, trip detail,
   incidents (Jinja2 + HTMX + Alpine.js + UnoCSS, served by the API).
 - Docs (phase G): regenerate handoff and contracts from the OpenAPI export.
