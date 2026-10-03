@@ -173,8 +173,9 @@ export const en = {
   hardAccel: 'hard accelerations',
   sharpCorners: 'sharp corners',
   noEvents: 'No driving events. Smooth trip.',
-  tripA11y: '{date}, {km} km, score {score}, tier {tier}',
-  tripA11yNoScore: '{date}, {km} km, no score yet',
+  tripA11y: '{date}, {distance}, score {score}, tier {tier}',
+  tripA11yNoScore: '{date}, {distance}, no score yet',
   minValue: '{min} min',
   setupFailed: 'Could not set up your account.',
+  offlineBanner: 'You\'re offline. Showing your last data.',
 };

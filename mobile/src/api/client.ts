@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../config';
+import { setOnline } from '../connectivity';
 
 const API_BASE = `${API_BASE_URL}/v1`;
 
@@ -23,10 +24,9 @@ export interface TripChunkRequest {
     gy: number;
     gz: number;
   }>;
-  gps: Array<{
+  speed_samples: Array<{
     t: number;
     speed?: number;
-    heading?: number;
     accuracy?: number;
   }>;
 }
@@ -56,6 +56,7 @@ export interface TripListItem {
   trip_id: string;
   started_at: string;
   distance_km: number;
+  duration_min: number | null;
   score: number | null;
   tier: Tier | null;
   trip_type: TripType | null;
@@ -86,7 +87,7 @@ export interface TripDetailResponse {
   started_at: string;
   ended_at: string | null;
   distance_km: number;
-  duration_min: number;
+  duration_min: number | null;
   score: number | null;
   confidence: number | null;
   tier: Tier | null;
@@ -113,10 +114,18 @@ async function request<T>(path: string, init?: RequestInit, apiKey?: string): Pr
     headers['X-API-Key'] = apiKey;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers,
+    });
+  } catch (err) {
+    // fetch only rejects when the server could not be reached
+    setOnline(false);
+    throw err;
+  }
+  setOnline(true);
 
   if (!response.ok) {
     const text = await response.text();

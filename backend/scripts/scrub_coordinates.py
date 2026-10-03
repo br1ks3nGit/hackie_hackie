@@ -57,13 +57,14 @@ def scrub_file(path: Path, apply: bool) -> int:
         chunk = json.load(f)
     if not isinstance(chunk, dict):
         raise MalformedChunk("root is not an object")
-    gps = chunk.get("gps", [])
+    key = "speed_samples" if "speed_samples" in chunk else "gps"  # "gps" = pre-rename files
+    gps = chunk.get(key, [])
     if not isinstance(gps, list) or not all(isinstance(s, dict) for s in gps):
-        raise MalformedChunk("gps is not a list of objects")
+        raise MalformedChunk(f"{key} is not a list of objects")
     cleaned = [strip_coordinates(s) for s in gps]
     changed = sum(1 for old, new in zip(gps, cleaned, strict=True) if len(old) != len(new))
     if changed and apply:
-        chunk["gps"] = cleaned
+        chunk[key] = cleaned
         _rewrite(path, chunk)
     return changed
 

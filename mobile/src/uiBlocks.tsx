@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from './theme';
 import { useLanguage } from './i18n';
+import { checkConnection, useOnline } from './connectivity';
 import { Card, CardSm, Inset, SecondaryButton } from './ui';
 
 const { colors, radii, space, type } = theme;
@@ -69,6 +70,32 @@ export function ErrorBanner({ text, onRetry }: { text: string; onRetry?: () => v
       {onRetry ? (
         <SecondaryButton style={styles.action} label={t('retry')} onPress={onRetry} />
       ) : null}
+    </View>
+  );
+}
+
+// The live-region wrapper stays mounted so the offline text is announced once when it appears.
+export function OfflineBanner() {
+  const { t } = useLanguage();
+  const online = useOnline();
+  const [checking, setChecking] = useState(false);
+  const retry = async () => {
+    setChecking(true);
+    await checkConnection();
+    setChecking(false);
+  };
+  return (
+    <View accessibilityLiveRegion="polite">
+      {online ? null : (
+        <View style={styles.offline}>
+          <Text style={styles.offlineText}>{t('offlineBanner')}</Text>
+          <SecondaryButton
+            label={t('retry')}
+            onPress={retry}
+            disabled={checking}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -146,5 +173,15 @@ const styles = StyleSheet.create({
   emptyText: { ...type.body, color: colors.textMuted, textAlign: 'center' },
   action: { marginTop: space.md, alignSelf: 'center' },
   banner: { backgroundColor: colors.danger.soft, borderRadius: radii.cardSm, padding: space.lg },
+  offline: {
+    minHeight: 44,
+    backgroundColor: colors.warning.soft,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+  },
+  offlineText: { ...type.bodyStrong, color: colors.warning.ink, flex: 1 },
   bannerText: { ...type.bodyStrong, color: colors.danger.ink },
 });

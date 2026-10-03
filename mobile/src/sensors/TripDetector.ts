@@ -1,4 +1,4 @@
-import { AccelerometerSample, GyroscopeSample, GPSPoint } from '../types';
+import { AccelerometerSample, GyroscopeSample, SpeedSample } from '../types';
 import { TripChunkRequest, uploadChunk } from '../api/client';
 
 const TRIP_START_SPEED_MS = 2.0; // ~7 km/h
@@ -14,7 +14,7 @@ export class TripDetector {
 
   private accelSamples: AccelerometerSample[] = [];
   private gyroSamples: GyroscopeSample[] = [];
-  private gpsPoints: GPSPoint[] = [];
+  private gpsPoints: SpeedSample[] = [];
 
   private chunkSeq = 0;
   private lastChunkUpload = 0;
@@ -54,7 +54,7 @@ export class TripDetector {
     this._trimSamples(sample.t);
   }
 
-  addGpsPoint(point: GPSPoint) {
+  addGpsPoint(point: SpeedSample) {
     this.gpsPoints.push(point);
     this._trimSamples(point.t);
 
@@ -175,7 +175,7 @@ export class TripDetector {
       // Always sent: true when the "I'm driving" toggle is on, false when off
       car_connected: this.isDriving?.() ?? false,
       imu: this._mergeImuSamples(accel, gyro),
-      gps: gpsPoints.map(p => ({
+      speed_samples: gpsPoints.map(p => ({
         t: Math.round(p.t * 1000),
         speed: p.speed,
         accuracy: p.accuracy,

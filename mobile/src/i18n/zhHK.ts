@@ -166,8 +166,9 @@ export const zhHK: Record<keyof typeof en, string> = {
   hardAccel: '急加速',
   sharpCorners: '急轉彎',
   noEvents: '冇駕駛事件，行程好平穩。',
-  tripA11y: '{date}，{km} 公里，評分 {score}，等級 {tier}',
-  tripA11yNoScore: '{date}，{km} 公里，未有評分',
+  tripA11y: '{date}，{distance}，評分 {score}，等級 {tier}',
+  tripA11yNoScore: '{date}，{distance}，未有評分',
   minValue: '{min} 分鐘',
   setupFailed: '設定唔到你嘅帳戶。',
+  offlineBanner: '你而家離線，顯示緊上次嘅資料。',
 };

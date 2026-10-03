@@ -111,3 +111,12 @@ def test_file_mode_preserved(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     _run(monkeypatch, "--data-dir", str(tmp_path), "--apply")
     assert os.stat(path).st_mode & 0o777 == 0o644
     assert "lat" not in _read(path)["gps"][0]
+
+
+def test_scrub_handles_speed_samples_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = tmp_path / "t" / "0.json.gz"
+    path.parent.mkdir()
+    with gzip.open(path, "wt", encoding="utf-8") as f:
+        json.dump({"seq": 0, "imu": [{"t": 1}], "speed_samples": [dict(GPS)]}, f)
+    _run(monkeypatch, "--data-dir", str(tmp_path), "--apply")
+    assert "lat" not in _read(path)["speed_samples"][0]

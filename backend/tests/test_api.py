@@ -3,7 +3,9 @@ from datetime import datetime, timedelta
 
 from fastapi.testclient import TestClient
 
+from app.database import SessionLocal
 from app.main import app
+from app.models import TripFeature
 from tests.helpers import insurer_headers
 
 client = TestClient(app)
@@ -71,7 +73,7 @@ def test_full_trip_flow():
                 "gz": 0.02,
             },
         ],
-        "gps": [
+        "speed_samples": [
             {"t": 1759986000000, "speed": 10.0},
             {"t": 1759986001000, "speed": 15.0},
         ],
@@ -141,3 +143,19 @@ def test_trip_list_datetime_is_timezone_aware():
     started_at = datetime.fromisoformat(response.json()[0]["started_at"])
     assert started_at.tzinfo is not None
     assert started_at.utcoffset() == timedelta(0)
+
+
+def test_trip_list_has_duration_min():
+    api_key = client.post("/v1/drivers/register", json={}).json()["api_key"]
+    headers = {"X-API-Key": api_key}
+    client.post("/v1/consent", headers=headers, json={"version": "1.0"})
+    trip_id = client.post("/v1/trips/start", headers=headers).json()["trip_id"]
+
+    assert client.get("/v1/me/trips", headers=headers).json()[0]["duration_min"] is None
+    detail = client.get(f"/v1/me/trips/{trip_id}", headers=headers).json()
+    assert detail["duration_min"] is None
+
+    with SessionLocal() as db:
+        db.add(TripFeature(trip_id=trip_id, features={"distance_km": 3.0, "duration_min": 21.5}))
+        db.commit()
+    assert client.get("/v1/me/trips", headers=headers).json()[0]["duration_min"] == 21.5

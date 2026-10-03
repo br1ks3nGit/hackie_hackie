@@ -1241,74 +1241,6 @@
         "title": "EventResponse",
         "description": "A detected driving event within a trip."
       },
-      "GPSSample": {
-        "properties": {
-          "t": {
-            "type": "integer",
-            "title": "T",
-            "description": "Fix time, epoch milliseconds (UTC).",
-            "examples": [
-              1767225600000
-            ]
-          },
-          "speed": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Speed",
-            "description": "Ground speed, m/s.",
-            "examples": [
-              13.4
-            ]
-          },
-          "heading": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMaximum": 360.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Heading",
-            "description": "Course over ground, degrees (0 to <360).",
-            "examples": [
-              90.0
-            ]
-          },
-          "accuracy": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Accuracy",
-            "description": "Horizontal accuracy radius, metres.",
-            "examples": [
-              5.0
-            ]
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "t"
-        ],
-        "title": "GPSSample",
-        "description": "One GPS fix. Coordinates are never accepted: they stay on the phone."
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1896,6 +1828,57 @@
         "title": "SensorSnapshot",
         "description": "Summary of sensor data around a crash. Unknown keys (e.g. coordinates) are rejected."
       },
+      "SpeedSample": {
+        "properties": {
+          "t": {
+            "type": "integer",
+            "title": "T",
+            "description": "Fix time, epoch milliseconds (UTC).",
+            "examples": [
+              1767225600000
+            ]
+          },
+          "speed": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed",
+            "description": "Ground speed, m/s.",
+            "examples": [
+              13.4
+            ]
+          },
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy",
+            "description": "Horizontal accuracy radius, metres.",
+            "examples": [
+              5.0
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "t"
+        ],
+        "title": "SpeedSample",
+        "description": "GPS speed sample (time, speed, accuracy; no coordinates). Coordinates are never accepted."
+      },
       "TripChunkRequest": {
         "properties": {
           "seq": {
@@ -1916,14 +1899,14 @@
             "title": "Imu",
             "description": "IMU samples in ascending time order."
           },
-          "gps": {
+          "speed_samples": {
             "items": {
-              "$ref": "#/components/schemas/GPSSample"
+              "$ref": "#/components/schemas/SpeedSample"
             },
             "type": "array",
             "minItems": 1,
-            "title": "Gps",
-            "description": "GPS fixes in ascending time order."
+            "title": "Speed Samples",
+            "description": "GPS speed samples in ascending time order."
           },
           "car_connected": {
             "anyOf": [
@@ -1946,7 +1929,7 @@
         "required": [
           "seq",
           "imu",
-          "gps"
+          "speed_samples"
         ],
         "title": "TripChunkRequest",
         "description": "Request body of POST /v1/trips/{trip_id}/chunks (one slice of sensor data)."
@@ -2021,9 +2004,16 @@
             ]
           },
           "duration_min": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Duration Min",
-            "description": "Duration, minutes (0 if not yet computed).",
+            "description": "Duration, minutes; null if not yet computed.",
             "examples": [
               21.5
             ]
@@ -2221,6 +2211,21 @@
               12.34
             ]
           },
+          "duration_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Min",
+            "description": "Duration, minutes; null if not yet computed.",
+            "examples": [
+              21.5
+            ]
+          },
           "score": {
             "anyOf": [
               {
@@ -2317,6 +2322,7 @@
           "trip_id",
           "started_at",
           "distance_km",
+          "duration_min",
           "score",
           "tier"
         ],

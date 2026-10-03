@@ -270,7 +270,8 @@ def test_json_driver_detail_unchanged(client: TestClient, seeded: None) -> None:
         "driver_id": "drv-b", "score": 80, "confidence": 0.1, "tier": "B",
         "premium_multiplier": 0.9, "event_rates": {},
         "trips": [{
-            "trip_id": "t-drv-b", "distance_km": 10.0, "score": 80, "tier": "B",
+            "trip_id": "t-drv-b", "distance_km": 10.0, "duration_min": None,
+            "score": 80, "tier": "B",
             "trip_type": "driver", "needs_confirmation": False, "label_source": None,
             "transit_line": None,
         }],

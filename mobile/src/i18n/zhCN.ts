@@ -166,8 +166,9 @@ export const zhCN: Record<keyof typeof en, string> = {
   hardAccel: '急加速',
   sharpCorners: '急转弯',
   noEvents: '没有驾驶事件，行程平稳。',
-  tripA11y: '{date}，{km} 公里，评分 {score}，等级 {tier}',
-  tripA11yNoScore: '{date}，{km} 公里，暂无评分',
+  tripA11y: '{date}，{distance}，评分 {score}，等级 {tier}',
+  tripA11yNoScore: '{date}，{distance}，暂无评分',
   minValue: '{min} 分钟',
   setupFailed: '无法完成账户设置。',
+  offlineBanner: '你已离线，显示的是最近一次的数据。',
 };

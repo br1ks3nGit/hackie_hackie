@@ -21,7 +21,7 @@ function tiles(t: Translate, trip: TripDetailResponse) {
   const peak = Math.max(0, ...trip.events.map((e) => e.peak_g ?? 0));
   return [
     { label: t('distance'), value: t('kmValue', { km: trip.distance_km.toFixed(1) }) },
-    { label: t('duration'), value: t('minValue', { min: trip.duration_min.toFixed(0) }) },
+    { label: t('duration'), value: trip.duration_min === null ? '-' : t('minValue', { min: trip.duration_min.toFixed(0) }) },
     { label: t('hardBrakes'), value: countOf(trip, 'harsh_brake') },
     { label: t('hardAccel'), value: countOf(trip, 'harsh_accel') },
     { label: t('sharpCorners'), value: countOf(trip, 'sharp_corner') },

@@ -8,7 +8,6 @@ Chunks carry car_connected=True so trips classify as driver trips.
 """
 
 import argparse
-import math
 import random
 import time
 from typing import Any
@@ -84,7 +83,6 @@ def _build_chunks(trip_type: str, duration_s: int) -> list[dict[str, Any]]:
     fwd = np.gradient(v)  # m/s^2 per second
 
     start_ms = int(time.time() * 1000)
-    heading = random.uniform(0, 2 * math.pi)
 
     chunks = []
     for seq, chunk_start in enumerate(range(0, duration_s, 60)):
@@ -102,16 +100,14 @@ def _build_chunks(trip_type: str, duration_s: int) -> list[dict[str, Any]]:
                         "gz": yaw[s] + random.gauss(0, 0.01),
                     }
                 )
-            heading += yaw[s]
             gps.append(
                 {
                     "t": start_ms + s * 1000,
                     "speed": max(0.0, v[s] + random.gauss(0, 0.2)),
-                    "heading": math.degrees(heading) % 360,
                     "accuracy": random.uniform(3, 10),
                 }
             )
-        chunks.append({"seq": seq, "imu": imu, "gps": gps, "car_connected": True})
+        chunks.append({"seq": seq, "imu": imu, "speed_samples": gps, "car_connected": True})
     return chunks
 
 

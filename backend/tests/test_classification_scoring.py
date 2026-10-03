@@ -57,7 +57,7 @@ def test_label_trip_as_passenger_removes_from_score():
                 }
                 for i in range(100)
             ],
-            "gps": [
+            "speed_samples": [
                 {
                     "t": 1759986000000 + i * 1000,
                     "speed": 15.0,
@@ -98,7 +98,7 @@ def test_label_trip_as_driver_adds_to_score():
                 }
                 for i in range(100)
             ],
-            "gps": [
+            "speed_samples": [
                 {
                     "t": 1759986000000 + i * 1000,
                     "speed": 15.0,
@@ -160,7 +160,7 @@ def test_trip_list_includes_trip_type():
                 }
                 for i in range(100)
             ],
-            "gps": [
+            "speed_samples": [
                 {
                     "t": 1759986000000 + i * 1000,
                     "speed": 15.0,
@@ -292,7 +292,7 @@ def test_insurer_detail_includes_passenger_share():
                 }
                 for i in range(100)
             ],
-            "gps": [
+            "speed_samples": [
                 {
                     "t": 1759986000000 + i * 1000,
                     "speed": 15.0,

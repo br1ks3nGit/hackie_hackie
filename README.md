@@ -434,7 +434,7 @@ contract in `backend/contract/openapi.json`.
 | Ingestion | POST | `/v1/drivers/register` | none | Create a driver; returns `driver_id`, `api_key` (optional emergency contact in body) |
 | Ingestion | POST | `/v1/consent` | driver | Record PDPO consent (`version`) |
 | Ingestion | POST | `/v1/trips/start` | driver | Open a trip, returns `trip_id`; 403 if no consent |
-| Ingestion | POST | `/v1/trips/{trip_id}/chunks` | driver | Upload one IMU + GPS speed chunk (`seq`, `imu[]`, `gps[]` = GPS speed samples, `car_connected`); idempotent per `seq`; only while status is `uploading` |
+| Ingestion | POST | `/v1/trips/{trip_id}/chunks` | driver | Upload one IMU + GPS speed chunk (`seq`, `imu[]`, `speed_samples[]` = GPS speed samples, `car_connected`); idempotent per `seq`; only while status is `uploading` |
 | Ingestion | POST | `/v1/trips/{trip_id}/end` | driver | Close the trip and start background processing |
 | Ingestion | GET | `/v1/trips/{trip_id}/status` | driver | `uploading`, `processing`, `done` or `failed` (+ `failure_reason`) |
 | Driver reports | GET | `/v1/me/summary` | driver | 90-day score, confidence, tier, premium multiplier, trend, trip count, distance |
@@ -463,14 +463,17 @@ Chunk payload (`t` is epoch milliseconds; accelerometer in g, gyroscope in rad/s
 {
   "seq": 0,
   "imu": [{"t": 1760000000000, "ax": 0.0, "ay": 0.0, "az": 1.0, "gx": 0.0, "gy": 0.0, "gz": 0.0}],
-  "gps": [{"t": 1760000000000, "speed": 8.3, "accuracy": 5.0}],
+  "speed_samples": [{"t": 1760000000000, "speed": 8.3, "accuracy": 5.0}],
   "car_connected": true
 }
 ```
 
-The `gps` array holds GPS speed samples only (time, speed, accuracy; no coordinates). A `gps` sample with
+The `speed_samples` array holds GPS speed samples only (time, speed, accuracy; no coordinates). A sample with
 `lat`, `lon` or `lng` (or any unknown field), and an incident with coordinates, is rejected
 with 422.
+
+Raw chunk files written before the rename store the samples under `gps`; the pipeline and
+`scripts/scrub_coordinates.py` read both keys. New files use `speed_samples`.
 
 ## 7. Processing pipeline
 
