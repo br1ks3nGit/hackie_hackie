@@ -3,6 +3,7 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     DateTime,
     Float,
     ForeignKey,
@@ -26,6 +27,71 @@ from app.values import (
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+class User(Base):
+    """An insurer dashboard staff user."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        comment="scrypt:<n>:<r>:<p>:<salt_hex>:<hash_hex> (app/services/passwords.py)",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, comment="False blocks login and ends sessions"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, comment="Null until the first login"
+    )
+
+
+class ApiKey(Base):
+    """An insurer API key (X-API-Key for /v1/insurer/* and reprocess), made in the dashboard."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String, nullable=False, comment="Label, e.g. the consumer")
+    key_prefix: Mapped[str] = mapped_column(
+        String, nullable=False, comment="First characters of the key, shown to recognise it"
+    )
+    key_hash: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        unique=True,
+        comment="Salted SHA-256 of the key; the key itself is shown once and never stored",
+    )
+    created_by_user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, comment="Null until first used"
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, comment="Set when revoked; revoked keys are denied"
+    )
+
+
+class AppSetting(Base):
+    """Generated server settings kept in the database (e.g. the driver API key salt)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
 
 class Driver(Base):

@@ -6,12 +6,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
 from app.database import SessionLocal
 from app.main import app
 from app.model import score_to_tier
 from app.models import Driver, Event, Trip, TripFeature, TripScore
-from tests.test_dashboard import PASSWORD_HASH, login
+from tests.helpers import create_admin, insurer_headers
+from tests.test_dashboard import login
 
 # (driver id, trip score) -> tier A / B / D; "drv-none" has no trips (score 60, tier C, 1.0x)
 SEED = [("drv-a", 95), ("drv-b", 80), ("drv-d", 50)]
@@ -23,9 +23,8 @@ def client() -> TestClient:
 
 
 @pytest.fixture(autouse=True)
-def configured_login(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(get_settings(), "dashboard_password_hash", PASSWORD_HASH)
-    monkeypatch.setattr(get_settings(), "dashboard_username", "admin")
+def configured_login() -> None:
+    create_admin()
 
 
 def _add_trip(db: Session, trip_id: str, driver_id: str, score: int, **fields: Any) -> None:
@@ -238,12 +237,8 @@ def test_detail_requires_login(client: TestClient) -> None:
     assert client.get("/dashboard/drivers/x").status_code == 303
 
 
-def _insurer_headers() -> dict[str, str]:
-    return {"X-API-Key": get_settings().insurer_api_key}
-
-
 def test_json_drivers_unchanged(client: TestClient, seeded: None) -> None:
-    response = client.get("/v1/insurer/drivers", headers=_insurer_headers())
+    response = client.get("/v1/insurer/drivers", headers=insurer_headers())
     assert response.status_code == 200
     assert response.json() == [
         {"driver_id": "drv-a", "score": 95, "confidence": 0.1, "tier": "A",
@@ -255,18 +250,18 @@ def test_json_drivers_unchanged(client: TestClient, seeded: None) -> None:
         {"driver_id": "drv-d", "score": 50, "confidence": 0.1, "tier": "D",
          "premium_multiplier": 1.15, "total_trips_90d": 1, "total_distance_km_90d": 10.0},
     ]  # fmt: skip
-    asc = client.get("/v1/insurer/drivers?sort=score_asc&tier=D", headers=_insurer_headers())
+    asc = client.get("/v1/insurer/drivers?sort=score_asc&tier=D", headers=insurer_headers())
     assert [d["driver_id"] for d in asc.json()] == ["drv-d"]
     # JSON route is not paginated
     db = SessionLocal()
     db.add_all([Driver(id=f"more-{i:02d}", api_key_hash="h") for i in range(25)])
     db.commit()
     db.close()
-    assert len(client.get("/v1/insurer/drivers", headers=_insurer_headers()).json()) == 29
+    assert len(client.get("/v1/insurer/drivers", headers=insurer_headers()).json()) == 29
 
 
 def test_json_driver_detail_unchanged(client: TestClient, seeded: None) -> None:
-    response = client.get("/v1/insurer/drivers/drv-b", headers=_insurer_headers())
+    response = client.get("/v1/insurer/drivers/drv-b", headers=insurer_headers())
     assert response.status_code == 200
     body = response.json()
     trip = body["trips"][0]
@@ -283,6 +278,6 @@ def test_json_driver_detail_unchanged(client: TestClient, seeded: None) -> None:
         "label_sources": {"user": 0, "bluetooth": 0, "rules": 0, "unlabelled": 1},
         "flagged_for_review": False,
     }  # fmt: skip
-    missing = client.get("/v1/insurer/drivers/nope", headers=_insurer_headers())
+    missing = client.get("/v1/insurer/drivers/nope", headers=insurer_headers())
     assert missing.status_code == 404
     assert missing.json() == {"detail": "Driver not found"}

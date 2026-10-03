@@ -23,11 +23,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg://drivescore:drivescore@db:5432/drivescore
-      INSURER_API_KEY: ${INSURER_API_KEY:?set INSURER_API_KEY}
-      DRIVER_API_KEY_SALT: ${DRIVER_API_KEY_SALT:?set DRIVER_API_KEY_SALT}
+      # Dashboard users, insurer API keys and the driver-key salt live in Postgres (see README).
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
-      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-admin}
-      DASHBOARD_PASSWORD_HASH: ${DASHBOARD_PASSWORD_HASH:-}
       DATA_DIR: /data/raw
       MODEL_PATH: /models/model.pkl
     volumes:

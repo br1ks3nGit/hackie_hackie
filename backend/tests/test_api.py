@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
 from app.main import app
+from tests.helpers import insurer_headers
 
 client = TestClient(app)
 
@@ -126,8 +126,7 @@ def test_insurer_endpoints_require_insurer_key():
     response = client.get("/v1/insurer/overview", headers={"X-API-Key": "invalid-key"})
     assert response.status_code == 401
 
-    settings = get_settings()
-    response = client.get("/v1/insurer/overview", headers={"X-API-Key": settings.insurer_api_key})
+    response = client.get("/v1/insurer/overview", headers=insurer_headers())
     assert response.status_code == 200
 
 

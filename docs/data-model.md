@@ -1,6 +1,6 @@
 # Data model
 
-Eight PostgreSQL tables. `backend/app/models.py` is the source of truth; this page explains it.
+Eleven PostgreSQL tables. `backend/app/models.py` is the source of truth; this page explains it.
 
 ## Entity relationships
 
@@ -14,6 +14,31 @@ erDiagram
     trips ||--o| trip_features : "has (0..1)"
     trips ||--o| trip_scores : "has (0..1)"
     trips |o--o{ incidents : "may relate to"
+    users |o--o{ api_keys : "creates"
+
+    users {
+        int id PK
+        string username "unique"
+        string password_hash
+        bool is_active
+        timestamptz created_at
+        timestamptz last_login_at
+    }
+    api_keys {
+        int id PK
+        string name
+        string key_prefix
+        string key_hash "unique"
+        int created_by_user_id FK
+        timestamptz created_at
+        timestamptz last_used_at
+        timestamptz revoked_at
+    }
+    app_settings {
+        string key PK
+        string value
+        timestamptz created_at
+    }
 
     drivers {
         string id PK
@@ -191,6 +216,46 @@ Purpose: detected or reported crashes.
 | sensor_snapshot | json | yes | peak_g, imu_samples, duration_ms around the crash. |
 | created_at | timestamptz | no | Row creation time. |
 
+### users
+
+Purpose: insurer dashboard staff. Created with `scripts/manage_users.py` or on the dashboard Users screen.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| id | int | no | Primary key. |
+| username | string | no | Unique login name. |
+| password_hash | string | no | `scrypt:<n>:<r>:<p>:<salt_hex>:<hash_hex>`; the password is never stored. |
+| is_active | bool | no | False blocks login and ends open sessions. |
+| created_at | timestamptz | no | Row creation time. |
+| last_login_at | timestamptz | yes | Null until the first login. |
+
+### api_keys
+
+Purpose: insurer API keys (`X-API-Key` for `/v1/insurer/*` and reprocess), generated on the dashboard API keys screen.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| id | int | no | Primary key. |
+| name | string | no | Label, e.g. the consumer. |
+| key_prefix | string | no | First characters of the key, shown to recognise it. |
+| key_hash | string | no | Unique salted SHA-256 of the key; the key is shown once and never stored. |
+| created_by_user_id | int | yes | FK to `users.id`. |
+| created_at | timestamptz | no | Row creation time. |
+| last_used_at | timestamptz | yes | Null until first used (updated at most once a minute). |
+| revoked_at | timestamptz | yes | Set when revoked; revoked keys are denied. |
+
+### app_settings
+
+Purpose: server-generated settings kept in the database. Currently one row, `driver_api_key_salt`,
+created on first use and used to hash driver and insurer API keys. It is never shown or rotated:
+changing it would invalidate every driver key.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| key | string | no | Primary key, setting name. |
+| value | string | no | Setting value. |
+| created_at | timestamptz | no | Row creation time. |
+
 ## Indexes
 
 Foreign-key indexes (default names `ix_<table>_<column>`), created in migration 0001:
@@ -202,6 +267,7 @@ Foreign-key indexes (default names `ix_<table>_<column>`), created in migration 
 | ix_incidents_driver_id | incidents.driver_id |
 | ix_incidents_trip_id | incidents.trip_id |
 | ix_consents_driver_id | consents.driver_id |
+| ix_api_keys_created_by_user_id | api_keys.created_by_user_id |
 
 No extra index on `trip_chunks.trip_id` (leading column of `uq_trip_chunk`) or on
 `trip_features.trip_id` / `trip_scores.trip_id` (unique).

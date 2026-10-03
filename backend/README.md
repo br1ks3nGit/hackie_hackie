@@ -20,9 +20,13 @@ uv sync
 
 ```bash
 cp .env.example .env
-# Edit .env: set INSURER_API_KEY, DRIVER_API_KEY_SALT and the PostgreSQL DATABASE_URL / TEST_DATABASE_URL
-# (.env.example is still on SQLite; use postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore)
+# Edit .env: set SESSION_SECRET (32+ characters) and the PostgreSQL DATABASE_URL / TEST_DATABASE_URL
 ```
+
+Dashboard users, insurer API keys and the driver-key salt are stored in Postgres, not in `.env`.
+After migrating (step 3), create the first user with
+`uv run python scripts/manage_users.py create admin`, sign in at `/dashboard`, and generate
+insurer API keys on the **API keys** screen.
 
 ### 3. Start PostgreSQL and migrate
 
@@ -62,11 +66,12 @@ uv run python scripts/export_openapi.py
 From the repo root (needs Docker only, no local Python):
 
 ```bash
-export INSURER_API_KEY=change-me DRIVER_API_KEY_SALT=change-me-too   # or put both in a root .env
+export SESSION_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))")   # or put it in a root .env
 docker compose up -d --build
+docker compose exec api python scripts/manage_users.py create admin   # first dashboard user
 ```
 
-Compose refuses to start `api` if either key is unset. The `api` container waits for the
+Compose refuses to start `api` if `SESSION_SECRET` is unset. The `api` container waits for the
 healthy `db`, runs `alembic upgrade head`, then serves on `0.0.0.0:8000` (reachable from phones
 on the LAN, at `http://<laptop LAN IP>:8000`). Check it with `curl localhost:8000/health` and `docker compose logs api`.
 

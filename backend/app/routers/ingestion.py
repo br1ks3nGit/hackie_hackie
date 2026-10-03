@@ -38,7 +38,7 @@ def register_driver(
     api_key = generate_api_key()
     driver = Driver(
         id=driver_id,
-        api_key_hash=hash_api_key(api_key),
+        api_key_hash=hash_api_key(db, api_key),
         emergency_contact_name=request.emergency_contact_name,
         emergency_contact_phone=request.emergency_contact_phone,
     )

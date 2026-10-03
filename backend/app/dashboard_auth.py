@@ -3,9 +3,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from fastapi import Form, Header, HTTPException, Request
+from fastapi import Depends, Form, Header, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import User
 
 LOGIN_URL = "/dashboard/login"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -54,11 +59,28 @@ def start_session(request: Request, username: str) -> None:
     request.session["csrf_token"] = secrets.token_urlsafe(32)
 
 
-def require_login(request: Request) -> str:
-    user = request.session.get("user")
-    if not user:
+def require_user(request: Request, db: Session = Depends(get_db)) -> User:
+    """The signed-in staff user; a deleted or deactivated user's session is ended."""
+    username = request.session.get("user")
+    user = db.scalar(select(User).where(User.username == username)) if username else None
+    if user is None or not user.is_active:
+        request.session.clear()
         raise LoginRequired
     return user
+
+
+def require_login(user: User = Depends(require_user)) -> str:
+    return user.username
+
+
+def flash(request: Request, kind: str, message: str) -> None:
+    """Queue a one-time message for the next dashboard page render."""
+    request.session["flash"] = [kind, message]
+
+
+def pop_flash(request: Request) -> dict[str, str] | None:
+    value = request.session.pop("flash", None)
+    return {"kind": value[0], "message": value[1]} if value else None
 
 
 def verify_csrf(

@@ -14,7 +14,7 @@ def _seed_driver_with_scored_trips():
     """Insert one driver with two scored trips directly into the test DB."""
     db = SessionLocal()
     api_key = "test-scoring-driver-key"
-    driver = Driver(id="drv-test-scoring", api_key_hash=hash_api_key(api_key))
+    driver = Driver(id="drv-test-scoring", api_key_hash=hash_api_key(db, api_key))
     db.add(driver)
 
     now = datetime.now(UTC)

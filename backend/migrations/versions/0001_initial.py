@@ -213,9 +213,86 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("trip_id"),
     )
+    op.create_table(
+        "users",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("username", sa.String(), nullable=False),
+        sa.Column(
+            "password_hash",
+            sa.String(),
+            nullable=False,
+            comment="scrypt:<n>:<r>:<p>:<salt_hex>:<hash_hex> (app/services/passwords.py)",
+        ),
+        sa.Column(
+            "is_active",
+            sa.Boolean(),
+            nullable=False,
+            comment="False blocks login and ends sessions",
+        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column(
+            "last_login_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment="Null until the first login",
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("username"),
+    )
+    op.create_table(
+        "api_keys",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("name", sa.String(), nullable=False, comment="Label, e.g. the consumer"),
+        sa.Column(
+            "key_prefix",
+            sa.String(),
+            nullable=False,
+            comment="First characters of the key, shown to recognise it",
+        ),
+        sa.Column(
+            "key_hash",
+            sa.String(),
+            nullable=False,
+            comment="Salted SHA-256 of the key; the key itself is shown once and never stored",
+        ),
+        sa.Column("created_by_user_id", sa.Integer(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column(
+            "last_used_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment="Null until first used",
+        ),
+        sa.Column(
+            "revoked_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment="Set when revoked; revoked keys are denied",
+        ),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("key_hash"),
+    )
+    op.create_index(
+        op.f("ix_api_keys_created_by_user_id"), "api_keys", ["created_by_user_id"], unique=False
+    )
+    op.create_table(
+        "app_settings",
+        sa.Column("key", sa.String(), nullable=False),
+        sa.Column("value", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("key"),
+    )
 
 
 def downgrade() -> None:
+    op.drop_table("app_settings")
+    op.drop_index(op.f("ix_api_keys_created_by_user_id"), table_name="api_keys")
+    op.drop_table("api_keys")
+    op.drop_table("users")
     op.drop_table("trip_scores")
     op.drop_table("trip_features")
     op.drop_table("trip_chunks")
