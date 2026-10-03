@@ -18,6 +18,7 @@ export class TripDetector {
 
   private chunkSeq = 0;
   private lastChunkUpload = 0;
+  private uploadInFlight: Promise<boolean> | null = null;
 
   private onTripStart?: (tripId: string) => void;
   private onTripEnd?: (tripId: string) => void;
@@ -70,7 +71,7 @@ export class TripDetector {
     }
 
     // Upload chunk if enough time has passed
-    if (this.inTrip && now - this.lastChunkUpload >= CHUNK_INTERVAL_MS) {
+    if (this.inTrip && !this.uploadInFlight && now - this.lastChunkUpload >= CHUNK_INTERVAL_MS) {
       void this._uploadChunk();
     }
   }
@@ -141,13 +142,35 @@ export class TripDetector {
     console.error('Final chunk upload failed after all retries; ending trip without it');
   }
 
-  private async _uploadChunk(): Promise<boolean> {
+  // Uploads are serialized: a new upload waits for the one in flight, so two
+  // uploads never share a seq and samples are never cleared twice
+  private _uploadChunk(): Promise<boolean> {
+    const run = this.uploadInFlight ?? Promise.resolve(true);
+    const next = run.then(() => this._sendChunk());
+    this.uploadInFlight = next;
+    void next.finally(() => {
+      if (this.uploadInFlight === next) this.uploadInFlight = null;
+    });
+    return next;
+  }
+
+  private async _sendChunk(): Promise<boolean> {
     if (!this.tripId || !this.apiKey || this.accelSamples.length === 0) return true;
 
+    // Take the buffered samples now; samples that arrive during the upload go
+    // into fresh buffers and are sent with the next chunk
+    const accel = this.accelSamples;
+    const gyro = this.gyroSamples;
+    const gpsPoints = this.gpsPoints;
+    this.accelSamples = [];
+    this.gyroSamples = [];
+    this.gpsPoints = [];
+    const seq = this.chunkSeq;
+
     const chunk: TripChunkRequest = {
-      seq: this.chunkSeq,
-      imu: this._mergeImuSamples(),
-      gps: this.gpsPoints.map(p => ({
+      seq,
+      imu: this._mergeImuSamples(accel, gyro),
+      gps: gpsPoints.map(p => ({
         t: Math.round(p.t * 1000),
         lat: p.lat,
         lon: p.lng,
@@ -158,38 +181,40 @@ export class TripDetector {
 
     try {
       await uploadChunk(this.tripId, chunk, this.apiKey);
-      this.onChunkUploaded?.(this.chunkSeq);
+      this.onChunkUploaded?.(seq);
       this.chunkSeq++;
       this.lastChunkUpload = Date.now();
-
-      // Clear uploaded samples
-      this.accelSamples = [];
-      this.gyroSamples = [];
-      this.gpsPoints = [];
       return true;
     } catch (err) {
       console.warn('Failed to upload chunk, will retry', err);
-      // Keep samples for retry
+      // Put the samples back in front of anything recorded since
+      this.accelSamples = accel.concat(this.accelSamples);
+      this.gyroSamples = gyro.concat(this.gyroSamples);
+      this.gpsPoints = gpsPoints.concat(this.gpsPoints);
       return false;
     }
   }
 
-  private _mergeImuSamples(): Array<{ t: number; ax: number; ay: number; az: number; gx: number; gy: number; gz: number }> {
-    // Merge accelerometer and gyroscope samples by timestamp
-    // For simplicity, use accelerometer timestamps and interpolate gyro
-    return this.accelSamples.map(a => {
-      const nearestGyro = this.gyroSamples.reduce((prev, curr) =>
-        Math.abs(curr.t - a.t) < Math.abs(prev.t - a.t) ? curr : prev
-      , this.gyroSamples[0] || { t: 0, x: 0, y: 0, z: 0 });
-
+  private _mergeImuSamples(
+    accel: AccelerometerSample[],
+    gyro: GyroscopeSample[],
+  ): Array<{ t: number; ax: number; ay: number; az: number; gx: number; gy: number; gz: number }> {
+    // Pair each accelerometer sample with the nearest gyro sample. Both arrays
+    // are in time order, so one forward pointer is enough (linear time).
+    let j = 0;
+    return accel.map(a => {
+      while (j + 1 < gyro.length && Math.abs(gyro[j + 1].t - a.t) <= Math.abs(gyro[j].t - a.t)) {
+        j++;
+      }
+      const g = gyro[j] || { t: 0, x: 0, y: 0, z: 0 };
       return {
         t: Math.round(a.t * 1000),
         ax: a.x,
         ay: a.y,
         az: a.z,
-        gx: nearestGyro.x,
-        gy: nearestGyro.y,
-        gz: nearestGyro.z,
+        gx: g.x,
+        gy: g.y,
+        gz: g.z,
       };
     });
   }

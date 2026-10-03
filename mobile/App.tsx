@@ -9,6 +9,7 @@ import {
   endTrip,
   getDriverSummary,
   getTripDetail,
+  getTripStatus,
   DriverSummaryResponse,
   TripDetailResponse,
 } from './src/api/client';
@@ -87,12 +88,14 @@ export default function App() {
         if (apiKey) {
           try {
             await endTrip(tripId, apiKey);
-            // Wait a bit for processing
-            setTimeout(async () => {
-              await refreshSummary(apiKey);
-              const detail = await getTripDetail(tripId, apiKey);
-              setLastTrip(detail);
-            }, 2000);
+            // Poll until the backend finishes processing (up to ~60 s)
+            let status = 'processing';
+            for (let i = 0; i < 30 && status === 'processing'; i++) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              status = (await getTripStatus(tripId, apiKey)).status;
+            }
+            await refreshSummary(apiKey);
+            setLastTrip(await getTripDetail(tripId, apiKey));
           } catch (err) {
             console.error('Failed to end trip', err);
           }
