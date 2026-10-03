@@ -272,6 +272,19 @@ an equivalent data table, and an empty state when there are no scored trips. The
 partial `/dashboard/partials/overview`, refreshed every 30 s by HTMX. It uses the same service
 (`app/services/insurer.py`) as `GET /v1/insurer/overview`.
 
+**Drivers list** (`/dashboard/drivers`): table of drivers with score, tier badge, premium multiplier,
+trips and distance over 90 days. Query params: `tier` (A-E, default all), `sort`
+(`score_desc` default, `score_asc`, `multiplier_desc`, `multiplier_asc`), `page` (20 per page);
+unknown values fall back to the defaults. Filter, sort and page changes swap the partial
+`/dashboard/partials/drivers` via HTMX and update the address bar (`HX-Push-Url`); the page also works
+without JavaScript. Score and Multiplier headers are sortable (`aria-sort`).
+
+**Driver detail** (`/dashboard/drivers/{driver_id}`): score, tier, multiplier and trend, raw event counts
+for 90 days, passenger share with a "Flagged for review" pill, label source breakdown, model version and
+the 20 most recent trips (start time in Hong Kong time). Unknown ids show a dashboard-styled 404. Both
+pages use `app/services/insurer.py`, the same code as `GET /v1/insurer/drivers[/{id}]`. Trip rows link to
+`/dashboard/trips/{trip_id}`, which F4 adds (404 until then).
+
 ### Demo data
 
 With the API running (Option A: seed with `docker compose exec api python scripts/seed.py`;

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Drivers - DriveScore Insurer{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-text">Drivers</h1>
+<form method="get" action="/dashboard/drivers" class="card mt-4 flex flex-wrap items-end gap-4"
+      hx-get="/dashboard/partials/drivers" hx-trigger="change" hx-target="#drivers-table" hx-swap="outerHTML" hx-indicator="#drivers-loading" hx-disabled-elt="select">
+  <div class="flex flex-col gap-1">
+    <label for="tier" class="text-sm font-medium text-text">Tier</label>
+    <select id="tier" name="tier" class="input pr-8">
+      <option value=""{% if not tier %} selected{% endif %}>All</option>
+      {% for t in tiers %}<option value="{{ t }}"{% if tier == t %} selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="flex flex-col gap-1">
+    <label for="sort" class="text-sm font-medium text-text">Sort</label>
+    <select id="sort" name="sort" class="input pr-8">
+      {% for value, label in sort_options.items() %}<option value="{{ value }}"{% if sort == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <noscript><button type="submit" class="btn btn-secondary">Apply</button></noscript>
+</form>
+<div class="mt-4">
+  <div class="flex items-center gap-3">
+    {% include "partials/drivers_count.html" %}
+    <span id="drivers-loading" class="htmx-indicator text-sm text-text-muted" aria-hidden="true">Loading...</span>
+  </div>
+  {% include "partials/drivers_table.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "components/badges.html" import tier_badge, review_pill %}
+{% block title %}Driver {{ d.driver_id }} - DriveScore Insurer{% endblock %}
+{% block content %}
+{%- set trend_labels = {"improving": "Improving", "stable": "Stable", "worsening": "Worsening"} -%}
+{%- set event_labels = {"harsh_brake": "Harsh brake", "harsh_accel": "Harsh acceleration", "sharp_corner": "Sharp corner", "speeding": "Speeding"} -%}
+{%- set event_swatches = {"harsh_brake": "bg-event-harsh-brake", "harsh_accel": "bg-event-harsh-accel", "sharp_corner": "bg-event-sharp-corner", "speeding": "bg-event-speeding"} -%}
+{%- set source_labels = {"user": "Confirmed by driver", "bluetooth": "Car Bluetooth", "rules": "Rules", "unlabelled": "Unlabelled"} -%}
+{%- set type_labels = {"driver": "Driver", "passenger": "Passenger", "transit": "Transit", "unknown": "Unknown"} -%}
+<nav aria-label="Breadcrumb" class="text-sm"><a href="/dashboard/drivers" class="text-primary underline kbd-focus rounded-sm">Drivers</a></nav>
+<div class="mt-2 flex flex-wrap items-center gap-3">
+  <h1 id="driver-heading" class="text-2xl font-bold text-text font-mono">{{ d.driver_id }}</h1>
+  {{ tier_badge(d.tier, "lg") }}
+</div>
+
+<dl class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <div class="card">
+    <dt class="text-sm text-text-muted">Score</dt>
+    <dd class="mt-1"><span class="text-3xl font-bold text-text tabular-nums">{{ d.score }}</span> <span class="text-xs text-text-muted">Trend: {{ trend_labels.get(trend, trend) }}</span></dd>
+  </div>
+  <div class="card">
+    <dt class="text-sm text-text-muted">Premium multiplier</dt>
+    <dd class="mt-1 text-3xl font-bold text-text tabular-nums">{{ "%.2f"|format(d.premium_multiplier) }}x</dd>
+  </div>
+  <div class="card">
+    <dt class="text-sm text-text-muted">Passenger share</dt>
+    <dd class="mt-1"><span class="text-3xl font-bold text-text tabular-nums">{{ (d.passenger_share * 100)|round|int }}%</span>{% if d.flagged_for_review %} {{ review_pill() }}{% endif %}</dd>
+  </div>
+</dl>
+
+<div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+  <section class="card" aria-labelledby="events-heading">
+    <h2 id="events-heading" class="text-lg font-semibold text-text">Events</h2>
+    <p class="text-sm text-text-muted">Raw counts in the last 90 days.</p>
+    <dl class="mt-3 flex flex-col gap-2 text-sm">
+      {% for key, label in event_labels.items() %}
+      <div class="flex items-center justify-between gap-2">
+        <dt class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full {{ event_swatches[key] }}" aria-hidden="true"></span>{{ label }}</dt>
+        <dd class="font-semibold tabular-nums">{{ d.event_rates.get(key, 0) }}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+  </section>
+  <section class="card" aria-labelledby="sources-heading">
+    <h2 id="sources-heading" class="text-lg font-semibold text-text">Label sources</h2>
+    <p class="text-sm text-text-muted">Trips by who decided the trip type, last 90 days.</p>
+    {% if d.label_sources %}
+    <dl class="mt-3 flex flex-col gap-2 text-sm">
+      {% for key, label in source_labels.items() %}
+      <div class="flex items-center justify-between gap-2"><dt>{{ label }}</dt><dd class="font-semibold tabular-nums">{{ d.label_sources.get(key, 0) }}</dd></div>
+      {% endfor %}
+    </dl>
+    {% else %}
+    <p class="mt-3 text-sm text-text-muted">No trips in the last 90 days.</p>
+    {% endif %}
+    <p class="mt-3 text-xs text-text-muted">Model version: <span class="font-mono">{{ d.model_version }}</span></p>
+  </section>
+</div>
+
+<section class="mt-4" aria-labelledby="trips-heading">
+  <h2 id="trips-heading" class="text-xl font-semibold text-text">Recent trips</h2>
+  <div class="mt-2 overflow-x-auto rounded-lg border border-border bg-surface" tabindex="0" role="region" aria-label="Recent trips">
+    <table class="w-full text-sm text-left">
+      <caption class="sr-only">Most recent trips, newest first, times in Hong Kong time</caption>
+      <thead class="bg-surface-muted text-text-muted font-medium">
+        <tr>
+          <th scope="col" class="px-4 py-3">Started (HKT)</th>
+          <th scope="col" class="px-4 py-3 text-right">Distance km</th>
+          <th scope="col" class="px-4 py-3">Type</th>
+          <th scope="col" class="px-4 py-3 text-right">Score</th>
+          <th scope="col" class="px-4 py-3">Tier</th>
+          <th scope="col" class="px-4 py-3">Needs confirmation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in d.trips %}
+        <tr class="hover:bg-surface-muted">
+          <th scope="row" class="px-4 py-3 border-t border-border text-left font-normal"><a href="/dashboard/trips/{{ t.trip_id }}" class="text-primary underline kbd-focus rounded-sm"><time datetime="{{ t.started_at.isoformat() }}">{{ t.started_at|hk_time }}</time></a></th>
+          <td class="px-4 py-3 border-t border-border text-right tabular-nums">{{ "%.2f"|format(t.distance_km) }}</td>
+          <td class="px-4 py-3 border-t border-border">{{ type_labels.get(t.trip_type, "Unclassified") }}</td>
+          <td class="px-4 py-3 border-t border-border text-right tabular-nums">{% if t.score is none %}-<span class="sr-only">Not scored</span>{% else %}{{ t.score }}{% endif %}</td>
+          <td class="px-4 py-3 border-t border-border">{{ tier_badge(t.tier) }}</td>
+          <td class="px-4 py-3 border-t border-border">{{ "Yes" if t.needs_confirmation else "No" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="px-4 py-12 text-center border-t border-border"><p class="text-lg font-semibold text-text">No trips yet</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

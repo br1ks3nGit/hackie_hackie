@@ -10,7 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.config import get_settings
 from app.dashboard_auth import SESSION_MAX_AGE_S, LoginRequired, login_required_handler
 from app.model import load_model
-from app.routers import admin, dashboard, driver, incidents, ingestion, insurer
+from app.routers import admin, dashboard, dashboard_drivers, driver, incidents, ingestion, insurer
 
 settings = get_settings()
 
@@ -69,6 +69,7 @@ app.include_router(insurer.router, prefix="/v1", tags=["reports"])
 app.include_router(incidents.router, prefix="/v1", tags=["reports"])
 app.include_router(admin.router, prefix="/v1", tags=["admin"])
 app.include_router(dashboard.router)
+app.include_router(dashboard_drivers.router)
 
 
 @app.get("/health")

@@ -1,0 +1,64 @@
+{% from "components/badges.html" import tier_badge %}
+{%- set sort_state = {"score": "none", "multiplier": "none"} -%}
+{%- if sort == "score_desc" %}{% set _ = sort_state.update({"score": "descending"}) %}{% endif -%}
+{%- if sort == "score_asc" %}{% set _ = sort_state.update({"score": "ascending"}) %}{% endif -%}
+{%- if sort == "multiplier_desc" %}{% set _ = sort_state.update({"multiplier": "descending"}) %}{% endif -%}
+{%- if sort == "multiplier_asc" %}{% set _ = sort_state.update({"multiplier": "ascending"}) %}{% endif -%}
+{%- set arrows = {"none": "", "ascending": "↑", "descending": "↓"} -%}
+<div id="drivers-table">
+  {% if oob %}{% include "partials/drivers_count.html" %}{% endif %}
+  <div class="mt-2 overflow-x-auto rounded-lg border border-border bg-surface" tabindex="0" role="region" aria-label="Drivers">
+    <table class="w-full min-w-max text-sm text-left">
+      <caption class="sr-only">Drivers with score, tier and premium multiplier over the last 90 days</caption>
+      <thead class="bg-surface-muted text-text-muted font-medium">
+        <tr>
+          <th scope="col" class="px-4 py-3">Driver</th>
+          <th scope="col" class="px-4 py-3 text-right" aria-sort="{{ sort_state.score }}">
+            <a href="{{ score_sort_link.href }}" hx-get="{{ score_sort_link.hx }}" hx-target="#drivers-table" hx-swap="outerHTML" hx-indicator="#drivers-loading" class="inline-flex items-center gap-1 kbd-focus rounded-sm">Score<span aria-hidden="true">{{ arrows[sort_state.score] }}</span><span class="sr-only">, {{ score_sort_link.action }}</span></a>
+          </th>
+          <th scope="col" class="px-4 py-3">Tier</th>
+          <th scope="col" class="px-4 py-3 text-right" aria-sort="{{ sort_state.multiplier }}">
+            <a href="{{ multiplier_sort_link.href }}" hx-get="{{ multiplier_sort_link.hx }}" hx-target="#drivers-table" hx-swap="outerHTML" hx-indicator="#drivers-loading" class="inline-flex items-center gap-1 kbd-focus rounded-sm">Multiplier<span aria-hidden="true">{{ arrows[sort_state.multiplier] }}</span><span class="sr-only">, {{ multiplier_sort_link.action }}</span></a>
+          </th>
+          <th scope="col" class="px-4 py-3 text-right">Trips (90d)</th>
+          <th scope="col" class="px-4 py-3 text-right">Distance km (90d)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in drivers %}
+        <tr class="hover:bg-surface-muted">
+          <th scope="row" class="px-4 py-3 border-t border-border text-left font-normal"><a href="/dashboard/drivers/{{ d.driver_id }}" class="font-mono text-primary underline kbd-focus rounded-sm">{{ d.driver_id }}</a></th>
+          <td class="px-4 py-3 border-t border-border text-right tabular-nums">{{ d.score }}</td>
+          <td class="px-4 py-3 border-t border-border">{{ tier_badge(d.tier) }}</td>
+          <td class="px-4 py-3 border-t border-border text-right tabular-nums">{{ "%.2f"|format(d.premium_multiplier) }}x</td>
+          <td class="px-4 py-3 border-t border-border text-right tabular-nums">{{ d.total_trips_90d }}</td>
+          <td class="px-4 py-3 border-t border-border text-right tabular-nums">{{ "%.2f"|format(d.total_distance_km_90d) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="px-4 py-12 text-center border-t border-border">
+            {% if tier %}
+            <p class="text-lg font-semibold text-text">No drivers match this filter</p>
+            <p class="text-sm text-text-muted">No drivers are currently in tier {{ tier }}.</p>
+            <a href="{{ clear_link.href }}" hx-get="{{ clear_link.hx }}" hx-target="#drivers-table" hx-swap="outerHTML" hx-indicator="#drivers-loading" class="btn btn-secondary mt-4">Clear filter</a>
+            {% else %}
+            <p class="text-lg font-semibold text-text">No drivers yet</p>
+            <p class="text-sm text-text-muted">Scored trips will appear here.</p>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if total %}
+  <nav aria-label="Pagination" class="mt-4 flex flex-wrap items-center justify-between gap-2">
+    <p class="text-sm text-text-muted">Showing {{ first }}-{{ last }} of {{ total }}</p>
+    <div class="flex items-center gap-2">
+      {% if prev_link %}<a href="{{ prev_link.href }}" hx-get="{{ prev_link.hx }}" hx-target="#drivers-table" hx-swap="outerHTML" hx-indicator="#drivers-loading" class="btn btn-secondary btn-sm">Previous</a>{% else %}<span class="btn btn-sm bg-surface text-primary border border-primary opacity-50 cursor-not-allowed" aria-disabled="true">Previous</span>{% endif %}
+      <span class="text-sm text-text-muted" aria-current="page">Page {{ page }} of {{ pages }}</span>
+      {% if next_link %}<a href="{{ next_link.href }}" hx-get="{{ next_link.hx }}" hx-target="#drivers-table" hx-swap="outerHTML" hx-indicator="#drivers-loading" class="btn btn-secondary btn-sm">Next</a>{% else %}<span class="btn btn-sm bg-surface text-primary border border-primary opacity-50 cursor-not-allowed" aria-disabled="true">Next</span>{% endif %}
+    </div>
+  </nav>
+  {% endif %}
+</div>

@@ -1,0 +1,18 @@
+{% macro tier_badge(tier, size="sm") -%}
+{%- set badges = {
+  "A": "bg-tier-a-soft text-tier-a-ink",
+  "B": "bg-tier-b-soft text-tier-b-ink",
+  "C": "bg-tier-c-soft text-tier-c-ink",
+  "D": "bg-tier-d-soft text-tier-d-ink",
+  "E": "bg-tier-e-soft text-tier-e-ink",
+} -%}
+{%- if tier -%}
+<span class="tier-badge {{ badges[tier] }}{% if size == 'lg' %} text-base px-3 py-1{% endif %}"><span aria-hidden="true">{{ tier }}</span><span class="sr-only">Tier {{ tier }}</span></span>
+{%- else -%}
+<span class="tier-badge bg-surface-muted text-text-muted{% if size == 'lg' %} text-base px-3 py-1{% endif %}">n/a</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro review_pill() -%}
+<span class="pill bg-warning-soft text-warning-ink"><span aria-hidden="true">!</span>Review</span>
+{%- endmacro %}
