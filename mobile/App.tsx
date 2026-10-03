@@ -25,10 +25,11 @@ export default function App() {
 
 function Main() {
   const { t } = useLanguage();
-  const { status, apiKey, failed, retry, completeOnboarding } = useSession();
+  const { status, apiKey, failed, retry, completeOnboarding, signOutAfterDelete } = useSession();
   const [tab, setTab] = useState<TabKey>('home');
   const [tripId, setTripId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [recording, setRecording] = useState(false);
   const bumpRefresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   // Leaving the Trips tab, or tapping it while active, returns to the list
@@ -41,6 +42,12 @@ function Main() {
     setTripId(id);
     setTab('trips');
   }, []);
+
+  const afterDelete = useCallback(async () => {
+    setTab('home');
+    setTripId(null);
+    await signOutAfterDelete();
+  }, [signOutAfterDelete]);
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'home', label: t('tabHome') },
@@ -80,6 +87,7 @@ function Main() {
           setupFailed={failed}
           onRetrySetup={retry}
           onTripProcessed={bumpRefresh}
+          onRecordingChange={setRecording}
         />
       </View>
       {tab === 'trips' ? (
@@ -93,7 +101,9 @@ function Main() {
         />
       ) : null}
       {tab === 'coach' ? <CoachScreen /> : null}
-      {tab === 'privacy' ? <PrivacyScreen /> : null}
+      {tab === 'privacy' ? (
+        <PrivacyScreen apiKey={apiKey} recording={recording} onDeleted={afterDelete} />
+      ) : null}
       <BottomTabBar tabs={tabs} active={tab} onChange={changeTab} />
     </SafeAreaView>
   );

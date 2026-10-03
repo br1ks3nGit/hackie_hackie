@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../theme';
 import { useLanguage } from '../i18n';
@@ -20,6 +20,7 @@ interface HomeScreenProps {
   setupFailed: boolean;
   onRetrySetup: () => void;
   onTripProcessed: () => void;
+  onRecordingChange: (recording: boolean) => void;
 }
 
 export function HomeScreen(props: HomeScreenProps) {
@@ -33,6 +34,9 @@ export function HomeScreen(props: HomeScreenProps) {
     onTripProcessed();
   }, [refresh, onTripProcessed]);
   const rec = useRecording(apiKey, processed);
+  const { onRecordingChange } = props;
+  const { busy } = rec;
+  useEffect(() => onRecordingChange(busy), [busy, onRecordingChange]);
   const message = messageFor(t, data);
   const recent = data.trips.slice(0, RECENT_COUNT);
   const showSkeleton = data.loading && data.summary === null && !setupFailed;

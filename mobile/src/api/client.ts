@@ -94,6 +94,15 @@ export interface TripDetailResponse {
   explanation: string | null;
 }
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, text: string) {
+    super(`API error ${status}: ${text}`);
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit, apiKey?: string): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -111,7 +120,7 @@ async function request<T>(path: string, init?: RequestInit, apiKey?: string): Pr
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`API error ${response.status}: ${text}`);
+    throw new ApiError(response.status, text);
   }
 
   return response.json() as Promise<T>;
