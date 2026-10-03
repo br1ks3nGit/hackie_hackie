@@ -225,6 +225,52 @@ def test_create_and_confirm_incident():
     assert response.json()["confirmed"] == "ok"
 
 
+def _incident_body(trip_id=None):
+    body = {
+        "type": "crash",
+        "time": datetime.now(UTC).isoformat(),
+        "lat": 22.3193,
+        "lon": 114.1694,
+        "peak_g": 5.2,
+    }
+    if trip_id is not None:
+        body["trip_id"] = trip_id
+    return body
+
+
+def test_incident_with_own_trip_id_ok():
+    _driver_id, api_key = _register_and_consent()
+    trip_id = _upload_trip(api_key, [])
+
+    response = client.post(
+        "/v1/me/incidents", headers={"X-API-Key": api_key}, json=_incident_body(trip_id)
+    )
+    assert response.status_code == 200
+
+
+def test_incident_without_trip_id_ok():
+    _driver_id, api_key = _register_and_consent()
+
+    response = client.post(
+        "/v1/me/incidents", headers={"X-API-Key": api_key}, json=_incident_body()
+    )
+    assert response.status_code == 200
+
+
+def test_incident_with_other_drivers_trip_id_404():
+    _a_id, key_a = _register_and_consent()
+    _b_id, key_b = _register_and_consent()
+    trip_b = _upload_trip(key_b, [])
+
+    response = client.post(
+        "/v1/me/incidents", headers={"X-API-Key": key_a}, json=_incident_body(trip_b)
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Trip not found"
+    with SessionLocal() as db:
+        assert db.query(Incident).count() == 0
+
+
 def test_incident_naive_time_treated_as_utc():
     _driver_id, api_key = _register_and_consent()
 
