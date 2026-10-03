@@ -31,7 +31,7 @@ def _make_crash_data():
     imu_df = pd.DataFrame(
         {
             "t": times,
-            "time": pd.to_datetime(times, unit="ms"),
+            "time": pd.to_datetime(times, unit="ms", utc=True),
             "accel_forward": accel_forward,
             "accel_lateral": accel_lateral,
             "accel_vertical": accel_vertical,
@@ -49,7 +49,7 @@ def _make_crash_data():
     gps_df = pd.DataFrame(
         {
             "t": gps_times,
-            "time": pd.to_datetime(gps_times, unit="ms"),
+            "time": pd.to_datetime(gps_times, unit="ms", utc=True),
             "lat": 22.3193 + np.linspace(0, 0.005, len(gps_times)),
             "lon": 114.1694 + np.linspace(0, 0.005, len(gps_times)),
             "speed": gps_speeds,
@@ -81,7 +81,7 @@ def test_no_crash_normal_driving():
     imu_df = pd.DataFrame(
         {
             "t": times,
-            "time": pd.to_datetime(times, unit="ms"),
+            "time": pd.to_datetime(times, unit="ms", utc=True),
             "accel_forward": np.random.normal(0, 0.1, len(times)),
             "accel_lateral": np.random.normal(0, 0.1, len(times)),
             "accel_vertical": np.random.normal(0, 0.1, len(times)),
@@ -92,7 +92,7 @@ def test_no_crash_normal_driving():
     gps_df = pd.DataFrame(
         {
             "t": gps_times,
-            "time": pd.to_datetime(gps_times, unit="ms"),
+            "time": pd.to_datetime(gps_times, unit="ms", utc=True),
             "lat": 22.3193 + np.linspace(0, 0.005, len(gps_times)),
             "lon": 114.1694 + np.linspace(0, 0.005, len(gps_times)),
             "speed": np.random.uniform(10, 20, len(gps_times)),
@@ -115,7 +115,7 @@ def test_hard_brake_not_crash():
     imu_df = pd.DataFrame(
         {
             "t": times,
-            "time": pd.to_datetime(times, unit="ms"),
+            "time": pd.to_datetime(times, unit="ms", utc=True),
             "accel_forward": accel_forward,
             "accel_lateral": np.random.normal(0, 0.05, len(times)),
             "accel_vertical": np.random.normal(0, 0.1, len(times)),
@@ -126,7 +126,7 @@ def test_hard_brake_not_crash():
     gps_df = pd.DataFrame(
         {
             "t": gps_times,
-            "time": pd.to_datetime(gps_times, unit="ms"),
+            "time": pd.to_datetime(gps_times, unit="ms", utc=True),
             "lat": 22.3193 + np.linspace(0, 0.005, len(gps_times)),
             "lon": 114.1694 + np.linspace(0, 0.005, len(gps_times)),
             "speed": np.random.uniform(5, 15, len(gps_times)),

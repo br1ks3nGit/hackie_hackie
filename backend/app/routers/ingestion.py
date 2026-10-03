@@ -2,7 +2,7 @@ import gzip
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -69,7 +69,7 @@ def start_trip(
         raise HTTPException(status_code=403, detail="Consent required before starting trips")
 
     trip_id = f"trp-{uuid.uuid4().hex[:12]}"
-    trip = Trip(id=trip_id, driver_id=driver.id, status="uploading", started_at=datetime.utcnow())
+    trip = Trip(id=trip_id, driver_id=driver.id, status="uploading", started_at=datetime.now(UTC))
     db.add(trip)
     db.commit()
     return TripStartResponse(trip_id=trip_id)
@@ -107,8 +107,8 @@ def upload_chunk(
 
     chunk_data = {
         "seq": chunk.seq,
-        "imu": [s.dict() for s in chunk.imu],
-        "gps": [s.dict() for s in chunk.gps],
+        "imu": [s.model_dump() for s in chunk.imu],
+        "gps": [s.model_dump() for s in chunk.gps],
         "car_connected": chunk.car_connected,
     }
 
@@ -140,7 +140,7 @@ def _read_trip_end_time(trip_id: str) -> datetime | None:
             continue
         gps = chunk.get("gps", [])
         if gps:
-            return datetime.utcfromtimestamp(gps[-1]["t"] / 1000.0)
+            return datetime.fromtimestamp(gps[-1]["t"] / 1000.0, UTC)
     return None
 
 
@@ -159,7 +159,7 @@ def end_trip(
         raise HTTPException(status_code=400, detail=f"Cannot end trip in status {trip.status}")
 
     # ended_at reflects the last recorded GPS sample, not the processing time
-    trip.ended_at = _read_trip_end_time(trip_id) or datetime.utcnow()
+    trip.ended_at = _read_trip_end_time(trip_id) or datetime.now(UTC)
     trip.status = "processing"
     db.commit()
 

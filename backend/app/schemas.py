@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Any
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # --- Auth / Registration ---
 
@@ -40,8 +41,9 @@ class IMUSample(BaseModel):
     gy: float
     gz: float
 
-    @validator("t")
-    def timestamp_must_be_reasonable(cls, v):
+    @field_validator("t")
+    @classmethod
+    def timestamp_must_be_reasonable(cls, v: Any) -> Any:
         if v < 1000000000000:  # before 2001
             raise ValueError("timestamp must be epoch milliseconds")
         return v
@@ -58,19 +60,21 @@ class GPSSample(BaseModel):
 
 class TripChunkRequest(BaseModel):
     seq: int = Field(..., ge=0)
-    imu: list[IMUSample] = Field(..., min_items=1)
-    gps: list[GPSSample] = Field(..., min_items=1)
+    imu: list[IMUSample] = Field(..., min_length=1)
+    gps: list[GPSSample] = Field(..., min_length=1)
     car_connected: bool | None = None
 
-    @validator("imu")
-    def imu_timestamps_in_order(cls, v):
+    @field_validator("imu")
+    @classmethod
+    def imu_timestamps_in_order(cls, v: Any) -> Any:
         for i in range(1, len(v)):
             if v[i].t < v[i - 1].t:
                 raise ValueError("IMU timestamps must be in ascending order")
         return v
 
-    @validator("gps")
-    def gps_timestamps_in_order(cls, v):
+    @field_validator("gps")
+    @classmethod
+    def gps_timestamps_in_order(cls, v: Any) -> Any:
         for i in range(1, len(v)):
             if v[i].t < v[i - 1].t:
                 raise ValueError("GPS timestamps must be in ascending order")
@@ -170,6 +174,8 @@ class InsurerDriverItem(BaseModel):
 
 
 class InsurerDriverDetailResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     driver_id: str
     score: int
     confidence: float
@@ -204,6 +210,11 @@ class IncidentCreate(BaseModel):
     peak_g: float | None = None
     trip_id: str | None = None
     sensor_snapshot: dict | None = None
+
+    @field_validator("time")
+    @classmethod
+    def _time_utc(cls, v: datetime) -> datetime:
+        return v.replace(tzinfo=UTC) if v.tzinfo is None else v
 
 
 class IncidentConfirm(BaseModel):

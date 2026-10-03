@@ -1,4 +1,5 @@
 import unittest.mock
+from datetime import datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -128,3 +129,16 @@ def test_insurer_endpoints_require_insurer_key():
     settings = get_settings()
     response = client.get("/v1/insurer/overview", headers={"X-API-Key": settings.insurer_api_key})
     assert response.status_code == 200
+
+
+def test_trip_list_datetime_is_timezone_aware():
+    api_key = client.post("/v1/drivers/register", json={}).json()["api_key"]
+    headers = {"X-API-Key": api_key}
+    client.post("/v1/consent", headers=headers, json={"version": "1.0"})
+    assert client.post("/v1/trips/start", headers=headers).status_code == 200
+
+    response = client.get("/v1/me/trips", headers=headers)
+    assert response.status_code == 200
+    started_at = datetime.fromisoformat(response.json()[0]["started_at"])
+    assert started_at.tzinfo is not None
+    assert started_at.utcoffset() == timedelta(0)
