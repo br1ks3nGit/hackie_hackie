@@ -214,7 +214,7 @@ Not clickable by default; a clickable card is an `<a>` wrapping, with `kbd-focus
 
 Card with: label (`text-sm text-text-muted`), value (`text-3xl font-bold text-text`), optional hint (`text-xs text-text-muted`).
 Use `<dl>` : `<dt>` label, `<dd>` value. Grid: `grid grid-cols-1 sm:grid-cols-3 gap-4`. Multiplier value shown as `1.15x`.
-Loading: three skeleton bars. Null data: "-" with `aria-label="No data"`.
+Loading: three skeleton bars. Null data: `<dd>-<span class="sr-only">No data</span></dd>`.
 
 ### 3.6 Table
 
@@ -288,7 +288,7 @@ the event list beside it is the text alternative (each event: type label, time, 
 ### 3.14 Chart (tier distribution, Chart.js)
 
 Bar chart, one bar per tier A..E in tier solid colors, x-axis labels "A".."E", y-axis count, value labels on bars (Chart.js datalabels or tooltips only is NOT enough).
-Provide a visually-hidden or toggled data table `<table class="sr-only">` (Tier, Drivers) as text alternative; canvas `role="img" aria-label="Drivers per tier: A 10, B 20, ..."`.
+Provide a visually-hidden or toggled data table `<table class="sr-only">` (Tier, Scored trips) as text alternative; canvas `role="img" aria-label="Scored trips per tier: A 10, B 20, ..."`.
 Grid lines `border` color, tick text `text-muted` 12px. Size `h-64`.
 
 ## 4. Mobile components (NativeWind; match E2/E3 in `mobile/App.tsx`)
@@ -323,7 +323,7 @@ Fragment routes return partials from `app/templates/partials/` (detected via `HX
 
 ### F2 Overview (`GET /dashboard`) - schema `InsurerOverviewResponse`
 - h1 "Overview". 3 stat tiles: Total drivers (`total_drivers`), Trips in last 90 days (`total_trips_90d`), Average premium multiplier (`average_multiplier`, "1.15x").
-- Card "Tier distribution": bar chart (3.14) from `tier_distribution`, JSON in `<script type="application/json" id="tier-data">`, Alpine component re-inits on `htmx:afterSwap`. Missing tiers = 0.
+- Card "Tier distribution" ("Scored trips per tier", table column "Scored trips"): bar chart (3.14) from `tier_distribution`, JSON in `<script type="application/json" id="tier-data">`, Alpine component re-inits on `htmx:afterSwap`. Missing tiers = 0.
 - Partial `partials/overview_stats.html` (tiles + chart data) with `hx-trigger="every 30s"`, `hx-swap="outerHTML"`, stable id `#overview-stats`.
 
 ### F3 Drivers (`GET /dashboard/drivers`) - `InsurerDriverItem`; detail `GET /dashboard/drivers/{driver_id}` - `InsurerDriverDetailResponse`

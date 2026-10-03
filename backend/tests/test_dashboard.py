@@ -1,10 +1,15 @@
+import json
 import re
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings, get_settings
+from app.database import SessionLocal
 from app.main import app
+from app.model import tier_to_multiplier
+from app.models import Driver, Trip, TripFeature, TripScore
 from app.services.passwords import hash_password, verify_password
 
 PASSWORD = "correct horse battery staple"
@@ -168,3 +173,102 @@ def test_settings_default_username_and_unset_hash() -> None:
     assert settings.dashboard_username == "admin"
     assert settings.dashboard_password_hash is None
     assert settings.session_https_only is False
+
+
+def _trip_rows(
+    trip_id: str, driver_id: str, tier: str, trip_type: str = "driver", age_days: int = 1
+) -> list[Trip | TripFeature | TripScore]:
+    created = datetime.now(UTC) - timedelta(days=age_days)
+    return [
+        Trip(
+            id=trip_id,
+            driver_id=driver_id,
+            status="done",
+            started_at=created,
+            trip_type=trip_type,
+            created_at=created,
+        ),
+        TripFeature(trip_id=trip_id, features={"distance_km": 10.0}),
+        TripScore(trip_id=trip_id, confidence=0.1, score=90, tier=tier, model_version="test"),
+    ]
+
+
+@pytest.fixture
+def seeded_overview() -> None:
+    db = SessionLocal()
+    db.add_all([Driver(id="drv-a", api_key_hash="h1"), Driver(id="drv-b", api_key_hash="h2")])
+    db.flush()
+    db.add_all(_trip_rows("t1", "drv-a", "A"))
+    db.add_all(_trip_rows("t2", "drv-a", "A"))
+    db.add_all(_trip_rows("t3", "drv-b", "C"))
+    db.add_all(_trip_rows("t-passenger", "drv-b", "A", "passenger"))
+    db.add_all(_trip_rows("t-old", "drv-b", "E", age_days=120))
+    db.commit()
+    db.close()
+
+
+def test_overview_renders_seeded_numbers(client: TestClient, seeded_overview: None) -> None:
+    login(client)
+    html = client.get("/dashboard").text
+    assert 'id="overview-stats"' in html
+    assert 'hx-trigger="every 30s"' in html
+    assert re.search(r"Total drivers</dt>\s*<dd[^>]*>2</dd>", html)
+    assert re.search(r"Trips in last 90 days</dt>\s*<dd[^>]*>3</dd>", html)
+    expected = (tier_to_multiplier("A") * 2 + tier_to_multiplier("C")) / 3
+    assert f">{expected:.2f}x</dd>" in html
+    data = re.search(r'id="tier-data">(.*?)</script>', html, re.S)
+    assert data
+    assert json.loads(data.group(1)) == [
+        {"tier": "A", "count": 2},
+        {"tier": "B", "count": 0},
+        {"tier": "C", "count": 1},
+        {"tier": "D", "count": 0},
+        {"tier": "E", "count": 0},
+    ]
+    assert "Scored trips per tier: A 2, B 0, C 1, D 0, E 0" in html
+
+
+def test_json_overview_seeded(seeded_overview: None) -> None:
+    api = TestClient(app)
+    response = api.get(
+        "/v1/insurer/overview", headers={"X-API-Key": get_settings().insurer_api_key}
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "total_drivers": 2,
+        "total_trips_90d": 3,
+        "tier_distribution": {"A": 2, "C": 1},
+        "average_multiplier": 0.87,
+    }
+
+
+def test_overview_empty_state(client: TestClient) -> None:
+    login(client)
+    html = client.get("/dashboard").text
+    assert "No scored trips yet" in html
+    assert 'id="tier-data"' not in html
+    assert (
+        '<dd class="mt-1 text-3xl font-bold text-text">-<span class="sr-only">No data</span></dd>'
+        in html
+    )
+
+
+def test_overview_partial_requires_login(client: TestClient) -> None:
+    response = client.get("/dashboard/partials/overview")
+    assert response.status_code == 303
+    assert response.headers["location"] == "/dashboard/login"
+
+
+def test_overview_partial_expired_session_htmx_redirects(client: TestClient) -> None:
+    response = client.get("/dashboard/partials/overview", headers={"HX-Request": "true"})
+    assert response.headers["HX-Redirect"] == "/dashboard/login"
+    assert "<html" not in response.text
+
+
+def test_overview_partial_returns_fragment(client: TestClient, seeded_overview: None) -> None:
+    login(client)
+    response = client.get("/dashboard/partials/overview", headers={"HX-Request": "true"})
+    assert response.status_code == 200
+    assert response.text.lstrip().startswith('<div id="overview-stats"')
+    assert "<html" not in response.text
+    assert "Total drivers" in response.text

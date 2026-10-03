@@ -2,6 +2,7 @@ import secrets
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.dashboard_auth import (
@@ -11,7 +12,10 @@ from app.dashboard_auth import (
     templates,
     verify_csrf,
 )
+from app.database import get_db
+from app.services.insurer import get_overview
 from app.services.passwords import verify_password
+from app.values import Tier
 
 router = APIRouter(
     prefix="/dashboard",
@@ -59,7 +63,38 @@ def logout(request: Request) -> RedirectResponse:
     return RedirectResponse("/dashboard/login", status_code=303)
 
 
+TIERS: tuple[Tier, ...] = ("A", "B", "C", "D", "E")
+
+
+def _overview_context(db: Session) -> dict:
+    data = get_overview(db)
+    tiers = [{"tier": t, "count": data.tier_distribution.get(t, 0)} for t in TIERS]
+    return {
+        "total_drivers": data.total_drivers,
+        "total_trips_90d": data.total_trips_90d,
+        "average_multiplier": data.average_multiplier,
+        "tiers": tiers,
+        "has_scores": any(t["count"] for t in tiers),
+    }
+
+
 @router.get("", response_class=HTMLResponse)
-def overview(request: Request, user: str = Depends(require_login)) -> HTMLResponse:
-    context = {"csrf_token": get_csrf_token(request), "user": user, "active": "overview"}
+def overview(
+    request: Request, user: str = Depends(require_login), db: Session = Depends(get_db)
+) -> HTMLResponse:
+    context = {
+        "csrf_token": get_csrf_token(request),
+        "user": user,
+        "active": "overview",
+        **_overview_context(db),
+    }
     return templates.TemplateResponse(request, "overview.html", context)
+
+
+@router.get("/partials/overview", response_class=HTMLResponse)
+def overview_partial(
+    request: Request, _user: str = Depends(require_login), db: Session = Depends(get_db)
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request, "partials/overview_stats.html", _overview_context(db)
+    )

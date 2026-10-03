@@ -7,6 +7,9 @@
   <title>{% block title %}DriveScore Insurer{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/uno.css">
   <script src="/static/vendor/htmx-2.0.11.min.js" defer></script>
+  <script src="/static/vendor/chart-4.5.1.umd.min.js" defer></script>
+  <script src="/static/js/tokens.js" defer></script>
+  <script src="/static/js/overview.js" defer></script>
   <script src="/static/vendor/alpine-3.17.4.min.js" defer></script>
 </head>
 <body class="min-h-full bg-surface-muted text-text font-sans" hx-headers='{{ {"X-CSRF-Token": csrf_token}|tojson }}'>

@@ -263,8 +263,14 @@ npm --prefix backend install   # once
 npm --prefix backend run css
 ```
 
-Tokens and components: `docs/design-system.md`. htmx and Alpine are vendored under
+Tokens and components: `docs/design-system.md`. htmx, Alpine and Chart.js are vendored under
 `backend/app/static/vendor/` (versions in its README).
+
+**Overview page** (`/dashboard`): stat tiles (total drivers, scoreable trips in the last 90 days,
+average premium multiplier), a Chart.js bar chart of scored trips per tier A-E (zero-filled) with
+an equivalent data table, and an empty state when there are no scored trips. The stats block is the
+partial `/dashboard/partials/overview`, refreshed every 30 s by HTMX. It uses the same service
+(`app/services/insurer.py`) as `GET /v1/insurer/overview`.
 
 ### Demo data
 
