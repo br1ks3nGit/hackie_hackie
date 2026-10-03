@@ -50,7 +50,7 @@ to end against synthetic and real sensor data. The whole stack (API + PostgreSQL
             |  BackgroundTasks (thread pool): process_trip(trip_id)
             v
  +-------------------------------------------------------------------+
- | Pipeline (app/pipeline.py, app/classify.py)                       |
+ | Pipeline (app/pipeline/, app/classify.py)                         |
  |  1. load chunks -> IMU / GPS tables, bluetooth ratio              |
  |  2. classify trip: transit | driver | unknown (+ driver_likelihood)|
  |       transit or passenger -> saved as done, NOT scored           |
@@ -105,12 +105,16 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 |   |   |-- schemas.py           API contract: Pydantic models with field docs (see /docs)
 |   |   |-- features.py          TripFeatures: feature contract with the model team
 |   |   |-- auth.py              API key hashing, driver and insurer dependencies
-|   |   |-- pipeline.py          quality checks, signal processing, events, crash, features
+|   |   |-- pipeline/            loading + quality checks, signal, events + crash, feature_calc,
+|   |   |                        process (process_trip)
+|   |   |-- services/scoring.py  driver score, scoreable trips, passenger stats, explanations
 |   |   |-- classify.py          transit / driver / unknown classification
 |   |   |-- model.py             model plug-in point, FEATURE_ORDER, score/tier/multiplier
 |   |   `-- routers/
 |   |       |-- ingestion.py     register, consent, trip start / chunks / end / status
-|   |       |-- reports.py       driver and insurer reports, labelling, incidents
+|   |       |-- driver.py        /me summary, trips, trip detail, labelling
+|   |       |-- insurer.py       /insurer overview, drivers, driver detail
+|   |       |-- incidents.py     /me/incidents create, confirm, list
 |   |       `-- admin.py         reprocess a trip, delete my data
 |   |-- Dockerfile               API image (uv, non-root user)
 |   |-- migrations/              Alembic env + versions/ (0001-0004)
@@ -343,7 +347,7 @@ Chunk payload (`t` is epoch milliseconds; accelerometer in g, gyroscope in rad/s
 
 ## 7. Processing pipeline
 
-Entry point: `process_trip(trip_id)` in `backend/app/pipeline.py`, run as a FastAPI
+Entry point: `process_trip(trip_id)` in `backend/app/pipeline/process.py`, run as a FastAPI
 `BackgroundTasks` job after `/end`. Fixed thresholds live next to the code as named constants
 or in the `CONFIG` dict in `app/classify.py`.
 
@@ -622,8 +626,8 @@ uv run ty check
 npm --prefix ../mobile run ts:check     # mobile TypeScript
 ```
 
-Limits used in review: functions at most 100 lines, files at most 500 lines (pipeline.py and
-reports.py are over and tracked as A7), line length 100.
+Limits: functions at most 100 lines, files at most 500 lines, line length 100. Ruff enforces
+complexity (C901, max 8) and at most 5 arguments (PLR0913/PLR0917).
 
 ### CI (`.github/workflows/ci.yml`)
 
@@ -702,8 +706,8 @@ Full plan and status in [docs/roadmap.md](docs/roadmap.md). One line is one smal
 - Done: A1 uv tooling, A2 lint baseline, A3 CI, A4 PostgreSQL + Alembic, A5 Docker image and
   compose for the API, A6 Pydantic v2 and timezone-aware timestamps, A8 typed models, A10
   readable schema (allowed values, field docs, TripFeatures, data-model.md), A9 foreign-key
-  indexes, C2 pipeline error path fix.
-- Next (phase A): A7 split oversized files, A11 cleanups.
+  indexes, A7 size limits (pipeline package, routers split), C2 pipeline error path fix.
+- Next (phase A): A11 cleanups.
 - Bugs: C1 incident trip ownership check.
 - Mobile (phase E): configurable `API_BASE`, send `car_connected`, optional trip labelling,
   NativeWind.

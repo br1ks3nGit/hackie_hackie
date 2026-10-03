@@ -176,7 +176,7 @@ If loading fails or the model returns invalid values, the API fails loudly.
 - GPS speed is used for event detection when available
 - Night driving = 23:00-05:59 Asia/Hong_Kong
 - Speeding threshold = 50 km/h (fixed HK urban default; one event per run > 10 s)
-- Events are detected with fixed thresholds in `app/pipeline.py`
+- Events are detected with fixed thresholds in `app/pipeline/events.py`
 - PostgreSQL (sync SQLAlchemy + psycopg 3) everywhere; schema is managed by Alembic (0001 baseline, 0002 timestamptz, 0003 column comments, 0004 FK indexes)
 - Timestamps are timezone-aware UTC (`timestamptz`, DB sessions pinned to UTC); API datetimes end in `Z`
 - Detailed data model (ER diagram, allowed values): [`../docs/data-model.md`](../docs/data-model.md)
@@ -209,11 +209,14 @@ backend/
 │   ├── features.py       # TripFeatures: contract with the model team
 │   ├── auth.py           # API key auth
 │   ├── model.py          # Model plugin interface
-│   ├── pipeline.py       # Processing pipeline
+│   ├── pipeline/         # Processing pipeline package (process.py has process_trip)
+│   ├── services/         # Scoring helpers shared by the report routers
 │   ├── classify.py       # Trip classification (transit / driver / unknown)
 │   └── routers/
 │       ├── ingestion.py  # Trip upload endpoints
-│       ├── reports.py    # Driver and insurer reports
+│       ├── driver.py     # /me reports and labelling
+│       ├── insurer.py    # /insurer reports
+│       ├── incidents.py  # /me/incidents
 │       └── admin.py      # Reprocess and delete
 ├── migrations/           # Alembic env + versions
 ├── Dockerfile            # API image
