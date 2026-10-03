@@ -279,7 +279,14 @@ without JavaScript. Score and Multiplier headers are sortable (`aria-sort`).
 for 90 days, passenger share with a "Flagged for review" pill, label source breakdown, model version and
 the 20 most recent trips (start time in Hong Kong time). Unknown ids show a dashboard-styled 404. Both
 pages use `app/services/insurer.py`, the same code as `GET /v1/insurer/drivers[/{id}]`. Trip rows link to
-`/dashboard/trips/{trip_id}`, which F4 adds (404 until then).
+`/dashboard/trips/{trip_id}`.
+
+**Trip detail** (`/dashboard/trips/{trip_id}`): header (driver link, Hong Kong times, status, type, distance,
+duration), score, tier and confidence, the explanation text, a Leaflet map of the route with event markers
+(Br, Ac, Co, Sp) and crash markers (square "!") with an HTML legend, the events table (the accessible
+alternative to the map) and any crash incidents. Trips without a route show "No route recorded". Unknown ids
+show a dashboard-styled 404. Leaflet 1.9.4 is vendored and loaded on this page only; map tiles come from
+the OpenStreetMap tile server (the browser needs internet access, attribution is shown on the map).
 
 ### Demo data
 
