@@ -13,6 +13,16 @@
         ],
         "summary": "Register Driver",
         "operationId": "register_driver_v1_drivers_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverRegisterRequest",
+                "default": {}
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -20,6 +30,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DriverRegisterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -34,15 +54,26 @@
         ],
         "summary": "Give Consent",
         "operationId": "give_consent_v1_consent_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ConsentRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -384,6 +415,67 @@
         }
       }
     },
+    "/v1/me/trips/{trip_id}/label": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Label Trip",
+        "operationId": "label_trip_v1_me_trips__trip_id__label_post",
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trip Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripLabelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripLabelResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me/trips/{trip_id}": {
       "get": {
         "tags": [
@@ -607,6 +699,163 @@
         }
       }
     },
+    "/v1/me/incidents": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Create Incident",
+        "operationId": "create_incident_v1_me_incidents_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "List Incidents",
+        "operationId": "list_incidents_v1_me_incidents_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IncidentResponse"
+                  },
+                  "title": "Response List Incidents V1 Me Incidents Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/incidents/{incident_id}/confirm": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Confirm Incident",
+        "operationId": "confirm_incident_v1_me_incidents__incident_id__confirm_post",
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Incident Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/trips/{trip_id}/reprocess": {
       "post": {
         "tags": [
@@ -721,10 +970,6 @@
     "schemas": {
       "ConsentRequest": {
         "properties": {
-          "driver_id": {
-            "type": "string",
-            "title": "Driver Id"
-          },
           "version": {
             "type": "string",
             "title": "Version"
@@ -732,7 +977,6 @@
         },
         "type": "object",
         "required": [
-          "driver_id",
           "version"
         ],
         "title": "ConsentRequest"
@@ -773,6 +1017,34 @@
           "deleted_files"
         ],
         "title": "DeleteDriverResponse"
+      },
+      "DriverRegisterRequest": {
+        "properties": {
+          "emergency_contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergency Contact Name"
+          },
+          "emergency_contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergency Contact Phone"
+          }
+        },
+        "type": "object",
+        "title": "DriverRegisterRequest"
       },
       "DriverRegisterResponse": {
         "properties": {
@@ -1015,6 +1287,172 @@
         ],
         "title": "IMUSample"
       },
+      "IncidentConfirm": {
+        "properties": {
+          "confirmed": {
+            "type": "string",
+            "pattern": "^(ok|help_needed|no_response)$",
+            "title": "Confirmed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "confirmed"
+        ],
+        "title": "IncidentConfirm"
+      },
+      "IncidentCreate": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "crash"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "peak_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak G"
+          },
+          "trip_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Id"
+          },
+          "sensor_snapshot": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensor Snapshot"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time"
+        ],
+        "title": "IncidentCreate"
+      },
+      "IncidentResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "peak_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak G"
+          },
+          "confirmed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "time",
+          "lat",
+          "lon",
+          "peak_g",
+          "confirmed",
+          "created_at"
+        ],
+        "title": "IncidentResponse"
+      },
       "InsurerDriverDetailResponse": {
         "properties": {
           "driver_id": {
@@ -1051,6 +1489,21 @@
           "model_version": {
             "type": "string",
             "title": "Model Version"
+          },
+          "passenger_share": {
+            "type": "number",
+            "title": "Passenger Share",
+            "default": 0.0
+          },
+          "label_sources": {
+            "type": "object",
+            "title": "Label Sources",
+            "default": {}
+          },
+          "flagged_for_review": {
+            "type": "boolean",
+            "title": "Flagged For Review",
+            "default": false
           }
         },
         "type": "object",
@@ -1207,6 +1660,17 @@
             "type": "array",
             "minItems": 1,
             "title": "Gps"
+          },
+          "car_connected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Car Connected"
           }
         },
         "type": "object",
@@ -1355,6 +1819,43 @@
         ],
         "title": "TripEndResponse"
       },
+      "TripLabelRequest": {
+        "properties": {
+          "trip_type": {
+            "type": "string",
+            "pattern": "^(driver|passenger)$",
+            "title": "Trip Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_type"
+        ],
+        "title": "TripLabelRequest"
+      },
+      "TripLabelResponse": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "title": "Trip Id"
+          },
+          "trip_type": {
+            "type": "string",
+            "title": "Trip Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "trip_type",
+          "status"
+        ],
+        "title": "TripLabelResponse"
+      },
       "TripListItem": {
         "properties": {
           "trip_id": {
@@ -1391,6 +1892,44 @@
               }
             ],
             "title": "Tier"
+          },
+          "trip_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Type"
+          },
+          "needs_confirmation": {
+            "type": "boolean",
+            "title": "Needs Confirmation",
+            "default": false
+          },
+          "label_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Source"
+          },
+          "transit_line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transit Line"
           }
         },
         "type": "object",

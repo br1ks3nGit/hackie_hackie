@@ -140,10 +140,10 @@ If loading fails or the model returns invalid values, the API fails loudly.
 
 ## Assumptions
 
-- Phone axes are roughly aligned with car axes (no full rotation matrix)
+- Orientation-free car frame: gravity removed with a 10 s rolling median; forward accel from GPS speed change, lateral accel from gyro yaw rate x GPS speed
 - GPS speed is used for event detection when available
 - Night driving = 23:00-05:00 local time
-- Speeding threshold = 60 km/h
+- Speeding threshold = 50 km/h (fixed HK urban default; one event per run > 10 s)
 - Events are detected with fixed thresholds in `app/pipeline.py`
 - PostgreSQL is used in production; SQLite can be used for local testing
 

@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base, get_db
 from app.config import get_settings
+from app.models import Trip
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_classify.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -114,8 +115,26 @@ def test_label_trip_as_driver_adds_to_score():
     }]
     trip_id = _upload_trip(api_key, chunks)
 
-    # Labelling an unscored trip as driver schedules processing; mock it out
-    # because the pipeline runs against the default DB, not the test DB
+    # While the trip is still processing, the label is stored and picked up by
+    # that run; no second pipeline run is scheduled
+    with unittest.mock.patch("app.routers.reports.BackgroundTasks.add_task") as mock_add_task:
+        response = client.post(
+            f"/v1/me/trips/{trip_id}/label",
+            headers={"X-API-Key": api_key},
+            json={"trip_type": "driver"},
+        )
+        assert response.status_code == 200
+        mock_add_task.assert_not_called()
+
+    # The pipeline runs against the default DB, not the test DB, so mark the
+    # trip as finished-without-score by hand
+    db = TestingSessionLocal()
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    trip.status = "done"
+    db.commit()
+    db.close()
+
+    # Labelling an unscored, finished trip as driver schedules processing
     with unittest.mock.patch("app.routers.reports.BackgroundTasks.add_task") as mock_add_task:
         response = client.post(
             f"/v1/me/trips/{trip_id}/label",

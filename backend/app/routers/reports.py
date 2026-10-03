@@ -233,8 +233,12 @@ def label_trip(
         status = "removed_from_score"
     elif request.trip_type == "driver":
         status = "added_to_score"
-        # An unscored trip labelled as driver needs processing to produce a score
-        if trip.score is None:
+        # An unscored, finished trip labelled as driver needs processing to produce a
+        # score. Trips still uploading/processing pick up the user label when they run.
+        if trip.score is None and trip.status in ("done", "failed"):
+            if trip.features is not None:
+                db.delete(trip.features)
+                db.commit()
             background_tasks.add_task(process_trip, trip_id)
 
     return TripLabelResponse(

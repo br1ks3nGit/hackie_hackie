@@ -219,10 +219,11 @@ def _detect_events(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str,
     gps_times = gps_df["t"].values
     gps_speeds = gps_df["speed"].fillna(0).values
 
-    # Find nearest GPS point for each IMU sample
-    gps_idx = np.searchsorted(gps_times, imu_times, side="left")
-    gps_idx = np.clip(gps_idx, 0, len(gps_times) - 1)
-    nearest_speeds = gps_speeds[gps_idx]
+    # Find nearest GPS point for each IMU sample: searchsorted gives the next
+    # point, so step back when the previous point is closer (>= 10 points after QC)
+    gps_idx = np.clip(np.searchsorted(gps_times, imu_times), 1, len(gps_times) - 1)
+    prev_closer = (imu_times - gps_times[gps_idx - 1]) < (gps_times[gps_idx] - imu_times)
+    nearest_speeds = gps_speeds[gps_idx - prev_closer.astype(int)]
 
     # Detect harsh braking
     brake_mask = imu_df["accel_forward"] < harsh_brake_threshold
@@ -604,6 +605,8 @@ def process_trip(trip_id: str) -> None:
             db.commit()
     except Exception as e:
         logger.error(f"Trip {trip_id} processing failed: {e}", exc_info=True)
+        # A failed flush leaves the session unusable until rolled back
+        db.rollback()
         trip = db.query(Trip).filter(Trip.id == trip_id).first()
         if trip:
             trip.status = "failed"

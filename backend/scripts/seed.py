@@ -18,7 +18,7 @@ def give_consent(driver_id: str, api_key: str) -> None:
     response = requests.post(
         f"{BASE_URL}/consent",
         headers={"X-API-Key": api_key},
-        json={"driver_id": driver_id, "version": "1.0"},
+        json={"version": "1.0"},
     )
     response.raise_for_status()
 
@@ -30,7 +30,6 @@ def simulate_trip(driver_id: str, api_key: str, trip_type: str) -> None:
 
     result = subprocess.run(
         [sys.executable, "scripts/simulate.py",
-         "--driver-id", driver_id,
          "--api-key", api_key,
          "--type", trip_type,
          "--count", "1"],
@@ -56,13 +55,9 @@ def main():
 
     print("\nSimulating trips...")
     for i, (driver_id, api_key) in enumerate(drivers):
-        # Mix of calm and aggressive drivers
-        if i < 20:
-            trip_type = "calm"
-            num_trips = random.randint(3, 8)
-        else:
-            trip_type = "aggressive"
-            num_trips = random.randint(3, 8)
+        # Mix of calm, moderate, and aggressive drivers so every tier shows up
+        trip_type = "calm" if i < 12 else "moderate" if i < 22 else "aggressive"
+        num_trips = random.randint(3, 8)
 
         for j in range(num_trips):
             print(f"Driver {i+1}/30, trip {j+1}/{num_trips} ({trip_type})")
