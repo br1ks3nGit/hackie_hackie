@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.model import load_model
-from app.routers import admin, ingestion, reports
+from app.routers import admin, driver, incidents, ingestion, insurer
 
 settings = get_settings()
 
@@ -49,7 +49,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(ingestion.router, prefix="/v1", tags=["ingestion"])
-app.include_router(reports.router, prefix="/v1", tags=["reports"])
+app.include_router(driver.router, prefix="/v1", tags=["reports"])
+app.include_router(insurer.router, prefix="/v1", tags=["reports"])
+app.include_router(incidents.router, prefix="/v1", tags=["reports"])
 app.include_router(admin.router, prefix="/v1", tags=["admin"])
 
 

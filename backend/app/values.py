@@ -10,9 +10,9 @@ Tier = Literal["A", "B", "C", "D", "E"]
 TripType = Literal["driver", "passenger", "transit", "unknown"]
 # trips.label_source; who decided trip_type (null when unlabelled)
 LabelSource = Literal["bluetooth", "rules", "user"]
-# events.type; produced by pipeline._detect_events
+# events.type; produced by pipeline/events._detect_events
 EventType = Literal["harsh_brake", "harsh_accel", "sharp_corner", "speeding"]
-# Driver score trend from reports._calculate_driver_score
+# Driver score trend from services/scoring.calculate_driver_score
 Trend = Literal["improving", "stable", "worsening"]
 # incidents.confirmed; set by POST /v1/me/incidents/{id}/confirm
 IncidentConfirmation = Literal["ok", "help_needed", "no_response"]

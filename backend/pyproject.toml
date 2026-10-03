@@ -35,11 +35,20 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM", "DTZ", "RUF"]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "DTZ", "RUF", "C901", "PLR0913", "PLR0917"]
+preview = true
+explicit-preview-rules = true
 ignore = [
     # FastAPI idiom: Depends(...)/Query(...) in argument defaults. Permanent.
     "B008",
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-positional-args = 5
 
 [tool.ty.environment]
 python-version = "3.12"
