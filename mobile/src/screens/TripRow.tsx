@@ -13,10 +13,14 @@ export function TripRow({ trip, onPress }: { trip: TripListItem; onPress: () => 
   const { language, t } = useLanguage();
   const when = formatDateTime(trip.started_at, language);
   const km = trip.distance_km.toFixed(1);
+  const distance =
+    trip.duration_min === null
+      ? t('kmValue', { km })
+      : `${t('kmValue', { km })} · ${Math.round(trip.duration_min)} ${t('minute')}`;
   const label =
     trip.score === null
-      ? t('tripA11yNoScore', { date: when, km })
-      : t('tripA11y', { date: when, km, score: Math.round(trip.score), tier: trip.tier ?? '-' });
+      ? t('tripA11yNoScore', { date: when, distance })
+      : t('tripA11y', { date: when, distance, score: Math.round(trip.score), tier: trip.tier ?? '-' });
   return (
     <Pressable
       onPress={onPress}
@@ -30,7 +34,7 @@ export function TripRow({ trip, onPress }: { trip: TripListItem; onPress: () => 
           <Text style={styles.strong}>{trip.score === null ? '-' : Math.round(trip.score)}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.caption}>{t('kmValue', { km })}</Text>
+          <Text style={styles.caption}>{distance}</Text>
           {trip.tier ? <TierChip tier={trip.tier} /> : null}
         </View>
         {trip.score !== null ? (

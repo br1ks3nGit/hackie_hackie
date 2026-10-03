@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.models import Consent, Driver, Trip, TripChunk
 from app.pipeline import process_trip
+from app.pipeline.loading import chunk_speed_samples
 from app.privacy import strip_coordinates
 from app.schemas import (
     ConsentRequest,
@@ -109,7 +110,7 @@ def upload_chunk(
     chunk_data = {
         "seq": chunk.seq,
         "imu": [s.model_dump() for s in chunk.imu],
-        "gps": [strip_coordinates(s.model_dump()) for s in chunk.gps],
+        "speed_samples": [strip_coordinates(s.model_dump()) for s in chunk.speed_samples],
         "car_connected": chunk.car_connected,
     }
 
@@ -125,7 +126,7 @@ def upload_chunk(
 
 
 def _read_trip_end_time(trip_id: str) -> datetime | None:
-    """Read the last GPS sample timestamp from the highest-seq chunk file."""
+    """Read the last speed sample timestamp from the highest-seq chunk file."""
     trip_dir = os.path.join(settings.data_dir, trip_id)
     if not os.path.exists(trip_dir):
         return None
@@ -139,9 +140,9 @@ def _read_trip_end_time(trip_id: str) -> datetime | None:
                 chunk = json.load(f)
         except (OSError, ValueError):
             continue
-        gps = chunk.get("gps", [])
-        if gps:
-            return datetime.fromtimestamp(gps[-1]["t"] / 1000.0, UTC)
+        samples = chunk_speed_samples(chunk)
+        if samples:
+            return datetime.fromtimestamp(samples[-1]["t"] / 1000.0, UTC)
     return None
 
 

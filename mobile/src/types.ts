@@ -12,8 +12,8 @@ export interface GyroscopeSample {
   z: number;
 }
 
-// Speed only: coordinates are read by the OS but never copied into the app.
-export interface GPSPoint {
+// GPS speed sample: coordinates are read by the OS but never copied into the app.
+export interface SpeedSample {
   t: number;
   speed?: number;
   accuracy?: number;

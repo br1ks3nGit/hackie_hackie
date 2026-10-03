@@ -20,6 +20,14 @@ def _load_chunk(trip_id: str, seq: int) -> dict[str, Any]:
         return json.load(f)
 
 
+def chunk_speed_samples(chunk: dict[str, Any]) -> list[dict[str, Any]]:
+    """Speed samples of a chunk; files written before the rename use the key "gps"."""
+    samples = chunk.get("speed_samples")
+    if samples is None:
+        samples = chunk.get("gps", [])
+    return samples
+
+
 def _load_all_chunks(trip_id: str) -> tuple[pd.DataFrame, pd.DataFrame, float | None]:
     imu_rows = []
     gps_rows = []
@@ -38,7 +46,7 @@ def _load_all_chunks(trip_id: str) -> tuple[pd.DataFrame, pd.DataFrame, float | 
         seq = int(filename.replace(".json.gz", ""))
         chunk = _load_chunk(trip_id, seq)
         imu_rows.extend(chunk.get("imu", []))
-        gps_rows.extend(chunk.get("gps", []))
+        gps_rows.extend(chunk_speed_samples(chunk))
         if chunk.get("car_connected") is not None:
             bt_total += 1
             if chunk.get("car_connected"):

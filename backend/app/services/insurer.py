@@ -154,6 +154,7 @@ def _trip_item(trip: Trip, score: TripScore | None) -> TripListItem:
         trip_id=trip.id,
         started_at=trip.started_at,
         distance_km=trip.features.features.get("distance_km", 0) if trip.features else 0,
+        duration_min=trip.features.features.get("duration_min") if trip.features else None,
         score=score.score if score else None,
         tier=score.tier if score else None,
         trip_type=trip.trip_type,

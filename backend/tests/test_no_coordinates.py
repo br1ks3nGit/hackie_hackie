@@ -33,7 +33,6 @@ def _gps(i: int, speed: float) -> dict:
     return {
         "t": T0 + i * 1000,
         "speed": speed,
-        "heading": 90.0,
         "accuracy": 5.0,
     }
 
@@ -50,7 +49,12 @@ def test_raw_chunk_on_disk_has_no_coordinates() -> None:
     _upload(
         api_key,
         trip_id,
-        {"seq": 0, "imu": [_imu(0)], "gps": [_gps(0, 10.0), _gps(1, 12.0)], "car_connected": True},
+        {
+            "seq": 0,
+            "imu": [_imu(0)],
+            "speed_samples": [_gps(0, 10.0), _gps(1, 12.0)],
+            "car_connected": True,
+        },
     )
 
     path = os.path.join(get_settings().data_dir, trip_id, "0.json.gz")
@@ -58,9 +62,9 @@ def test_raw_chunk_on_disk_has_no_coordinates() -> None:
         raw = f.read()
     stored = json.loads(raw)
 
-    assert len(stored["gps"]) == 2
-    for sample in stored["gps"]:
-        assert set(sample) == {"t", "speed", "heading", "accuracy"}
+    assert len(stored["speed_samples"]) == 2
+    for sample in stored["speed_samples"]:
+        assert set(sample) == {"t", "speed", "accuracy"}
     for key in ("lat", "lon", "lng", "latitude", "longitude"):
         assert f'"{key}"' not in raw
     assert not glob.glob(os.path.join(get_settings().data_dir, trip_id, "*.json"))
@@ -74,7 +78,7 @@ def test_processed_events_and_incidents_have_no_location() -> None:
     _upload(
         api_key,
         trip_id,
-        {"seq": 0, "imu": [_imu(i, spike_at=3000) for i in range(n_imu)], "gps": gps},
+        {"seq": 0, "imu": [_imu(i, spike_at=3000) for i in range(n_imu)], "speed_samples": gps},
     )
 
     process_trip(trip_id)
@@ -115,7 +119,7 @@ def test_chunk_with_coordinates_is_rejected_and_not_written() -> None:
         response = client.post(
             f"/v1/trips/{trip_id}/chunks",
             headers={"X-API-Key": api_key},
-            json={"seq": 0, "imu": [_imu(0)], "gps": [gps]},
+            json={"seq": 0, "imu": [_imu(0)], "speed_samples": [gps]},
         )
         assert response.status_code == 422, key
     trip_dir = os.path.join(get_settings().data_dir, trip_id)
@@ -135,3 +139,17 @@ def test_incident_with_coordinates_is_rejected() -> None:
             "/v1/me/incidents", headers={"X-API-Key": api_key}, json={**body, key: 22.3}
         )
         assert response.status_code == 422, key
+
+
+def test_chunk_with_legacy_gps_key_or_heading_is_rejected() -> None:
+    api_key, trip_id = _register_and_start()
+    url = f"/v1/trips/{trip_id}/chunks"
+    headers = {"X-API-Key": api_key}
+    body = {"seq": 0, "imu": [_imu(0)], "gps": [_gps(0, 1.0)]}
+    legacy = client.post(url, headers=headers, json=body)
+    assert legacy.status_code == 422
+    with_heading = {**_gps(0, 1.0), "heading": 90.0}
+    response = client.post(
+        url, headers=headers, json={"seq": 0, "imu": [_imu(0)], "speed_samples": [with_heading]}
+    )
+    assert response.status_code == 422

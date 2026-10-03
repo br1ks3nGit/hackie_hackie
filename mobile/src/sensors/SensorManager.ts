@@ -1,10 +1,10 @@
 import { Accelerometer, Gyroscope } from 'expo-sensors';
 import * as Location from 'expo-location';
-import { AccelerometerSample, GyroscopeSample, GPSPoint } from '../types';
+import { AccelerometerSample, GyroscopeSample, SpeedSample } from '../types';
 
 type AccelCallback = (sample: AccelerometerSample) => void;
 type GyroCallback = (sample: GyroscopeSample) => void;
-type GpsCallback = (point: GPSPoint) => void;
+type GpsCallback = (point: SpeedSample) => void;
 
 let accelSubscription: any = null;
 let gyroSubscription: any = null;

@@ -84,16 +84,13 @@ class IMUSample(BaseModel):
         return v
 
 
-class GPSSample(BaseModel):
-    """One GPS fix. Coordinates are never accepted: they stay on the phone."""
+class SpeedSample(BaseModel):
+    """GPS speed sample (time, speed, accuracy; no coordinates). Coordinates are never accepted."""
 
     model_config = ConfigDict(extra="forbid")
 
     t: int = Field(description="Fix time, epoch milliseconds (UTC).", examples=[_EPOCH_MS])
     speed: float | None = Field(None, ge=0, description="Ground speed, m/s.", examples=[13.4])
-    heading: float | None = Field(
-        None, ge=0, lt=360, description="Course over ground, degrees (0 to <360).", examples=[90.0]
-    )
     accuracy: float | None = Field(
         None, ge=0, description="Horizontal accuracy radius, metres.", examples=[5.0]
     )
@@ -113,8 +110,8 @@ class TripChunkRequest(BaseModel):
     imu: list[IMUSample] = Field(
         ..., min_length=1, description="IMU samples in ascending time order."
     )
-    gps: list[GPSSample] = Field(
-        ..., min_length=1, description="GPS fixes in ascending time order."
+    speed_samples: list[SpeedSample] = Field(
+        ..., min_length=1, description="GPS speed samples in ascending time order."
     )
     car_connected: bool | None = Field(
         None,
@@ -130,12 +127,12 @@ class TripChunkRequest(BaseModel):
                 raise ValueError("IMU timestamps must be in ascending order")
         return v
 
-    @field_validator("gps")
+    @field_validator("speed_samples")
     @classmethod
-    def gps_timestamps_in_order(cls, v: Any) -> Any:
+    def speed_sample_timestamps_in_order(cls, v: Any) -> Any:
         for i in range(1, len(v)):
             if v[i].t < v[i - 1].t:
-                raise ValueError("GPS timestamps must be in ascending order")
+                raise ValueError("Speed sample timestamps must be in ascending order")
         return v
 
 
@@ -188,8 +185,8 @@ class TripDetailResponse(BaseModel):
     distance_km: float = Field(
         description="Distance driven, km (0 if not yet computed).", examples=[12.34]
     )
-    duration_min: float = Field(
-        description="Duration, minutes (0 if not yet computed).", examples=[21.5]
+    duration_min: float | None = Field(
+        description="Duration, minutes; null if not yet computed.", examples=[21.5]
     )
     score: int | None = Field(description="Trip score 0 to 100, higher is safer.", examples=[82])
     confidence: float | None = Field(
@@ -207,6 +204,9 @@ class TripListItem(BaseModel):
     trip_id: str = Field(description="Trip id.", examples=[_TRIP_ID])
     started_at: datetime = Field(description="Trip start (UTC).", examples=[_TS])
     distance_km: float = Field(description="Distance driven, km.", examples=[12.34])
+    duration_min: float | None = Field(
+        description="Duration, minutes; null if not yet computed.", examples=[21.5]
+    )
     score: int | None = Field(description="Trip score 0 to 100; null if unscored.", examples=[82])
     tier: Tier | None = Field(description="Risk tier; null if unscored.")
     trip_type: TripType | None = Field(None, description="Who was driving; null until classified.")

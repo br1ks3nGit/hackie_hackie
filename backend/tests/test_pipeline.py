@@ -266,6 +266,22 @@ def test_validate_features_invalid_raises_short_pipeline_error():
     assert "\n" not in str(exc.value)
 
 
+def test_load_all_chunks_reads_legacy_gps_key(tmp_path, monkeypatch):
+    import gzip
+    import json
+
+    from app.pipeline import loading
+
+    monkeypatch.setattr(loading.settings, "data_dir", str(tmp_path))
+    trip_dir = tmp_path / "trip-old"
+    trip_dir.mkdir()
+    chunk = {"imu": [{"t": 1000000000000}], "gps": [{"t": 1000000000000, "speed": 4.0}]}
+    with gzip.open(trip_dir / "0.json.gz", "wt", encoding="utf-8") as f:
+        json.dump(chunk, f)
+    _imu, gps_df, _bt = loading._load_all_chunks("trip-old")
+    assert gps_df["speed"].tolist() == [4.0]
+
+
 def test_load_all_chunks_without_speed_gives_missing_speeds(tmp_path, monkeypatch):
     import gzip
     import json
@@ -275,7 +291,8 @@ def test_load_all_chunks_without_speed_gives_missing_speeds(tmp_path, monkeypatc
     monkeypatch.setattr(loading.settings, "data_dir", str(tmp_path))
     trip_dir = tmp_path / "trip-x"
     trip_dir.mkdir()
-    chunk = {"imu": [{"t": 1000000000000}], "gps": [{"t": 1000000000000}, {"t": 1000000001000}]}
+    samples = [{"t": 1000000000000}, {"t": 1000000001000}]
+    chunk = {"imu": [{"t": 1000000000000}], "speed_samples": samples}
     with gzip.open(trip_dir / "0.json.gz", "wt", encoding="utf-8") as f:
         json.dump(chunk, f)
     _imu, gps_df, _bt = loading._load_all_chunks("trip-x")
