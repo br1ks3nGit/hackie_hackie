@@ -1,7 +1,6 @@
 # AGENTS.md - Kimi Code CLI
 
-Instruction file for Kimi Code CLI sessions in this repo. Local-only (listed in .gitignore), same
-as CLAUDE.md.
+Instruction file for Kimi Code CLI sessions in this repo.
 
 CLAUDE.md is canonical for all project rules: layout, stack, tooling, hard limits, hard rules, git
 rules, code rules, output rules. Read CLAUDE.md and docs/roadmap.md before planning any task. If
