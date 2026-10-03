@@ -153,6 +153,8 @@ If loading fails or the model returns invalid values, the API fails loudly.
 uv run pytest tests/ -v
 ```
 
+CI (`.github/workflows/ci.yml`) runs `ruff format --check`, `ruff check`, `ty check` and `pytest` on every PR and on pushes to `main`.
+
 ## Project structure
 
 ```
