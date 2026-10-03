@@ -1,16 +1,17 @@
+import './global.css';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
-  Button,
   Switch,
   Pressable,
-  StyleSheet,
   Alert,
   ScrollView,
   AccessibilityInfo,
   useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { SWITCH_TRACK_OFF, SWITCH_TRACK_ON } from './src/tokens';
 import { API_BASE_URL } from './src/config';
 import { TripDetector } from './src/sensors/TripDetector';
 import { startSensors, stopSensors } from './src/sensors/SensorManager';
@@ -37,6 +38,28 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+// Literal class names so NativeWind can see them at build time
+const TIER_CHIP: Record<string, string> = {
+  A: 'bg-tier-a-soft',
+  B: 'bg-tier-b-soft',
+  C: 'bg-tier-c-soft',
+  D: 'bg-tier-d-soft',
+  E: 'bg-tier-e-soft',
+};
+const TIER_CHIP_TEXT: Record<string, string> = {
+  A: 'text-tier-a-ink',
+  B: 'text-tier-b-ink',
+  C: 'text-tier-c-ink',
+  D: 'text-tier-d-ink',
+  E: 'text-tier-e-ink',
+};
+
+const PRIMARY_BTN =
+  'min-h-11 items-center justify-center rounded-md bg-primary px-3 active:bg-primary-active';
+const SECONDARY_BTN =
+  'min-h-11 items-center justify-center rounded-md border border-primary bg-surface ' +
+  'px-3 active:bg-surface-muted';
+
 const STORAGE_KEYS = {
   DRIVER_ID: 'drivescore:driver_id',
   API_KEY: 'drivescore:api_key',
@@ -61,6 +84,8 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const { fontScale } = useWindowDimensions();
   const stackButtons = fontScale > 1.3;
+  // flex-1 only in a row: in a stacked column it would collapse the buttons to min height
+  const btnFlex = stackButtons ? '' : 'flex-1';
 
   const detectorRef = useRef<TripDetector | null>(null);
   // Read by TripDetector at chunk-build time, so flipping mid-trip applies to the next chunk
@@ -255,75 +280,117 @@ export default function App() {
     }
   };
 
+  const tierKey = summary?.tier.toUpperCase() ?? '';
+  const messageText = labelError ?? loadError ?? labelMessage ?? '';
+  const messageClass = labelError || loadError
+    ? 'mt-2 rounded-lg bg-danger-soft p-4 text-base text-danger-ink'
+    : messageText
+      ? 'mt-2 rounded-lg bg-success-soft p-4 text-base text-success-ink'
+      : '';
+  const disabledClass = labelling ? 'opacity-50' : '';
+
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>DriveScore</Text>
+    <SafeAreaView className="flex-1 bg-surface">
+    <ScrollView className="flex-1 px-5 pt-4">
+      <Text className="mb-2 text-3xl font-bold text-text">DriveScore</Text>
 
       {driverId && (
-        <Text style={styles.subtitle}>Driver: {driverId.substring(0, 12)}...</Text>
+        <Text className="mb-4 text-sm text-text-muted">Driver: {driverId.substring(0, 12)}...</Text>
       )}
 
       {summary && (
-        <View style={styles.scoreBox}>
-          <Text style={styles.scoreTitle}>Your Score</Text>
-          <Text style={styles.scoreValue}>{summary.score}</Text>
-          <Text>Tier: {summary.tier}</Text>
-          <Text>Premium Multiplier: {summary.premium_multiplier}x</Text>
-          <Text>Trend: {summary.trend}</Text>
-          <Text>Trips (90d): {summary.total_trips_90d}</Text>
+        <View className="mb-4 gap-1 rounded-lg bg-surface-muted p-4">
+          <Text className="text-sm text-text-muted">Your Score</Text>
+          <View className="flex-row items-center gap-3">
+            <Text className="text-5xl font-bold text-text">{summary.score}</Text>
+            <View
+              className={`rounded-sm px-2 py-0.5 ${TIER_CHIP[tierKey] ?? 'bg-border'}`}
+              accessible
+              accessibilityLabel={`Tier ${summary.tier}`}
+            >
+              <Text className={`text-xs font-semibold ${TIER_CHIP_TEXT[tierKey] ?? 'text-text'}`}>
+                {summary.tier}
+              </Text>
+            </View>
+          </View>
+          <Text className="text-base text-text">
+            Premium Multiplier: {summary.premium_multiplier}x
+          </Text>
+          <Text className="text-base text-text">Trend: {summary.trend}</Text>
+          <Text className="text-base text-text">Trips (90d): {summary.total_trips_90d}</Text>
         </View>
       )}
 
       <Pressable
-        style={styles.drivingRow}
+        className="min-h-12 flex-row items-center justify-between py-2"
         onPress={() => changeDrivingMode(!drivingMode)}
         accessibilityRole="switch"
         accessibilityState={{ checked: drivingMode }}
         accessibilityLabel="I'm driving"
       >
-        <Text style={styles.drivingLabel}>I'm driving: {drivingMode ? 'On' : 'Off'}</Text>
-        <Switch value={drivingMode} onValueChange={changeDrivingMode} accessible={false} />
+        <Text className="text-base font-semibold text-text">
+          I'm driving: {drivingMode ? 'On' : 'Off'}
+        </Text>
+        <Switch
+          value={drivingMode}
+          onValueChange={changeDrivingMode}
+          accessible={false}
+          trackColor={{ true: SWITCH_TRACK_ON, false: SWITCH_TRACK_OFF }}
+        />
       </Pressable>
-      <Text style={styles.drivingHint}>
+      <Text className="mb-4 text-sm text-text-muted">
         Turn on when you are the driver. Trips recorded while off do not count toward your score
         unless you confirm them later.
       </Text>
 
-      <Button
-        title={recording ? 'Stop Recording' : 'Start Recording'}
+      <Pressable
+        className={`min-h-11 items-center justify-center rounded-md px-3 ${
+          recording ? 'bg-danger active:bg-danger-ink' : 'bg-primary active:bg-primary-active'
+        }`}
         onPress={toggleRecording}
-        color={recording ? '#FF3B30' : '#34C759'}
-      />
+        accessibilityRole="button"
+        accessibilityLabel={recording ? 'Stop Recording' : 'Start Recording'}
+      >
+        <Text className="text-base font-semibold text-primary-fg">
+          {recording ? 'Stop Recording' : 'Start Recording'}
+        </Text>
+      </Pressable>
 
       {recording && (
-        <View style={styles.statusBox}>
-          <Text>Status: {inTrip ? 'In trip' : 'Recording (idle)'}</Text>
-          <Text>Driving: {drivingMode ? 'Yes' : 'No'}</Text>
-          <Text>Chunks uploaded: {chunkCount}</Text>
-          {currentTripId && <Text>Trip: {currentTripId.substring(0, 16)}...</Text>}
+        <View className="mt-5 rounded-lg bg-success-soft p-4">
+          <Text className="text-base font-semibold text-success-ink">Recording trip</Text>
+          <Text className="text-base text-success-ink">
+            Status: {inTrip ? 'In trip' : 'Recording (idle)'}
+          </Text>
+          <Text className="text-base text-success-ink">Driving: {drivingMode ? 'Yes' : 'No'}</Text>
+          <Text className="text-base text-success-ink">Chunks uploaded: {chunkCount}</Text>
+          {currentTripId && (
+            <Text className="text-base text-success-ink">
+              Trip: {currentTripId.substring(0, 16)}...
+            </Text>
+          )}
         </View>
       )}
 
-      <Text
-        style={labelError || loadError ? styles.errorText : styles.okText}
-        accessibilityLiveRegion="polite"
-      >
-        {labelError ?? loadError ?? labelMessage ?? ''}
+      <Text className={messageClass} accessibilityLiveRegion="polite">
+        {messageText}
       </Text>
       {loadError && apiKey && (
         <Pressable
-          style={styles.retryButton}
+          className="min-h-11 self-start justify-center px-3"
           onPress={() => refreshToConfirm(apiKey)}
           accessibilityRole="button"
           accessibilityLabel="Retry loading trips to confirm"
         >
-          <Text style={styles.retryText}>Retry</Text>
+          <Text className="text-base font-semibold text-primary">Retry</Text>
         </Pressable>
       )}
 
       {toConfirm.length > 0 && (
-        <View style={styles.confirmBox}>
-          <Text style={styles.tripTitle} accessibilityRole="header">Trips to confirm</Text>
+        <View className="mt-5 gap-3 rounded-lg bg-warning-soft p-4">
+          <Text className="text-base font-semibold text-warning-ink" accessibilityRole="header">
+            Trips to confirm
+          </Text>
           {toConfirm.map((trip) => {
             const started = new Date(trip.started_at);
             const time = formatTime(trip.started_at);
@@ -333,45 +400,36 @@ export default function App() {
               month: 'short',
             });
             return (
-              <View key={trip.trip_id} style={styles.confirmRow}>
-                <Text style={styles.confirmInfo}>
+              <View key={trip.trip_id} className="gap-3 rounded-lg bg-surface p-4">
+                <Text className="text-base font-semibold text-text">
                   {date} {time}
                   {'\n'}
                   {trip.distance_km.toFixed(1)} km
                 </Text>
-                <View
-                  style={[
-                    styles.confirmButtons,
-                    { flexDirection: stackButtons ? 'column' : 'row' },
-                  ]}
-                >
+                <View className={`gap-2 ${stackButtons ? 'flex-col' : 'flex-row'}`}>
                   <Pressable
-                    style={[
-                      styles.confirmButton,
-                      styles.primaryButton,
-                      labelling && styles.confirmDisabled,
-                    ]}
+                    className={`${PRIMARY_BTN} ${btnFlex} ${disabledClass}`}
                     disabled={labelling}
                     onPress={() => confirmTrip(trip, 'driver')}
                     accessibilityRole="button"
                     accessibilityLabel={`I was driving, trip on ${date} at ${time}`}
                     accessibilityState={{ disabled: labelling }}
                   >
-                    <Text style={styles.primaryButtonText}>I was driving</Text>
+                    <Text className="text-center text-base font-semibold text-primary-fg">
+                      I was driving
+                    </Text>
                   </Pressable>
                   <Pressable
-                    style={[
-                      styles.confirmButton,
-                      styles.secondaryButton,
-                      labelling && styles.confirmDisabled,
-                    ]}
+                    className={`${SECONDARY_BTN} ${btnFlex} ${disabledClass}`}
                     disabled={labelling}
                     onPress={() => confirmTrip(trip, 'passenger')}
                     accessibilityRole="button"
                     accessibilityLabel={`I was a passenger, trip on ${date} at ${time}`}
                     accessibilityState={{ disabled: labelling }}
                   >
-                    <Text style={styles.secondaryButtonText}>I was a passenger</Text>
+                    <Text className="text-center text-base font-semibold text-primary">
+                      I was a passenger
+                    </Text>
                   </Pressable>
                 </View>
               </View>
@@ -381,163 +439,27 @@ export default function App() {
       )}
 
       {lastTrip && (
-        <View style={styles.tripBox}>
-          <Text style={styles.tripTitle}>Last Trip</Text>
-          <Text>Score: {lastTrip.score ?? 'N/A'}</Text>
-          <Text>Distance: {lastTrip.distance_km.toFixed(2)} km</Text>
-          <Text>Duration: {lastTrip.duration_min.toFixed(1)} min</Text>
-          {lastTrip.explanation && <Text style={styles.explanation}>{lastTrip.explanation}</Text>}
-          <Text>Events: {lastTrip.events.length}</Text>
+        <View className="mb-10 mt-5 gap-1 rounded-lg bg-surface-muted p-4">
+          <Text className="text-base font-semibold text-text">Last Trip</Text>
+          <Text className="text-base text-text">Score: {lastTrip.score ?? 'N/A'}</Text>
+          <Text className="text-base text-text">
+            Distance: {lastTrip.distance_km.toFixed(2)} km
+          </Text>
+          <Text className="text-base text-text">
+            Duration: {lastTrip.duration_min.toFixed(1)} min
+          </Text>
+          {lastTrip.explanation && (
+            <Text className="text-base italic text-text-muted">{lastTrip.explanation}</Text>
+          )}
+          <Text className="text-base text-text">Events: {lastTrip.events.length}</Text>
           {lastTrip.events.map((e, idx) => (
-            <Text key={idx} style={styles.eventText}>
+            <Text key={idx} className="ml-2 text-sm text-text-muted">
               {e.type} {e.peak_g ? `(${e.peak_g.toFixed(2)}g)` : ''}
             </Text>
           ))}
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-  },
-  drivingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 48,
-    marginBottom: 4,
-  },
-  drivingLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  drivingHint: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 16,
-  },
-  scoreBox: {
-    padding: 15,
-    backgroundColor: '#f2f2f7',
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  scoreTitle: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: 5,
-  },
-  scoreValue: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  statusBox: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: '#e5f5e5',
-    borderRadius: 10,
-  },
-  tripBox: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: '#f2f2f7',
-    borderRadius: 10,
-    marginBottom: 40,
-  },
-  tripTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  confirmBox: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: '#fff4e0',
-    borderRadius: 10,
-  },
-  confirmRow: {
-    marginTop: 10,
-  },
-  confirmInfo: {
-    fontSize: 14,
-    marginBottom: 6,
-  },
-  confirmButtons: {
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  confirmButton: {
-    flex: 1,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-  },
-  primaryButton: {
-    backgroundColor: '#0062CC',
-  },
-  secondaryButton: {
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#0062CC',
-  },
-  retryButton: {
-    minHeight: 44,
-    alignSelf: 'flex-start',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  retryText: {
-    color: '#0062CC',
-    fontWeight: '600',
-  },
-  confirmDisabled: {
-    opacity: 0.5,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  secondaryButtonText: {
-    color: '#0062CC',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  okText: {
-    color: '#1b7a34',
-    marginTop: 6,
-  },
-  errorText: {
-    color: '#c62828',
-    marginTop: 6,
-  },
-  explanation: {
-    fontStyle: 'italic',
-    color: '#555',
-    marginTop: 5,
-  },
-  eventText: {
-    fontSize: 12,
-    color: '#555',
-    marginLeft: 10,
-  },
-});
