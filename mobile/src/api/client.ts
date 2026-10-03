@@ -132,7 +132,11 @@ export async function startTrip(apiKey: string): Promise<TripStartResponse> {
   return request('/trips/start', { method: 'POST' }, apiKey);
 }
 
-export async function uploadChunk(tripId: string, chunk: TripChunkRequest, apiKey: string): Promise<void> {
+export async function uploadChunk(
+  tripId: string,
+  chunk: TripChunkRequest,
+  apiKey: string,
+): Promise<void> {
   await request(`/trips/${tripId}/chunks`, {
     method: 'POST',
     body: JSON.stringify(chunk),
@@ -151,7 +155,11 @@ export async function getDriverSummary(apiKey: string): Promise<DriverSummaryRes
   return request('/me/summary', {}, apiKey);
 }
 
-export async function getMyTrips(apiKey: string, limit: number = 50, offset: number = 0): Promise<TripListItem[]> {
+export async function getMyTrips(
+  apiKey: string,
+  limit: number = 50,
+  offset: number = 0,
+): Promise<TripListItem[]> {
   return request(`/me/trips?limit=${limit}&offset=${offset}`, {}, apiKey);
 }
 

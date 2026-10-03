@@ -46,9 +46,9 @@ Open (the director escalates these when the increment needs them):
       on every API schema, typed models instead of bare dicts, a `TripFeatures` Pydantic model for
       the pipeline/model contract, table docstrings and column comments, `docs/data-model.md` with
       a Mermaid ER diagram and allowed values.
-- [ ] A11 Small cleanups (single `score_to_tier` done in A7): mobile `client.ts` types match the
+- [x] A11 Small cleanups (single `score_to_tier` done in A7): mobile `client.ts` types match the
       API (`client.ts` `TripListItem` types done in E3), remove legacy `mobile/src/types.ts` types
-      and unused deps, `backend/.env.example` on Postgres (user edit: file is agent-denied).
+      and unused deps, `backend/.env.example` on Postgres (already fixed in main).
 
 ## Phase C - Known bugs
 - [x] C1 `POST /v1/me/incidents`: check the trip belongs to the driver.
