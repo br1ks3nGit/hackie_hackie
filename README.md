@@ -135,8 +135,7 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
         |-- api/client.ts        typed API client (base URL from src/config.ts)
         |-- sensors/SensorManager.ts   accelerometer / gyroscope / GPS subscriptions
         |-- sensors/TripDetector.ts    trip start/end by speed, chunking and upload
-        |-- storage/TripStorage.ts     AsyncStorage helpers (not wired into App.tsx)
-        `-- types.ts             sensor sample types (some legacy types are unused)
+        `-- types.ts             sensor sample types
 ```
 
 ## 4. Tech stack
@@ -152,14 +151,11 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 | Signal processing | numpy, pandas, scipy | 1.26.4, 2.2.3, 1.13.1 |
 | Model | pluggable pickle (scikit-learn style), placeholder rules by default | n/a |
 | Mobile | Expo SDK ~51, React Native 0.74.0, React 18.2.0, TypeScript ~5.3.3 | see `mobile/package.json` |
-| Mobile libs | expo-sensors ~13.0, expo-location ~17.0, expo-notifications ~0.28, async-storage 1.23.1, react-native-maps 1.14.0 | |
+| Mobile libs | expo-sensors ~13.0, expo-location ~17.0, async-storage 1.23.1 | |
 | Package manager | uv (backend), npm (mobile) | |
 | Lint / format / types | ruff, ty (ruff line length 100) | latest via `uv.lock` |
 | Tests | pytest 8.4.2, httpx 0.27.0, pytest-asyncio 0.24.0 | |
 | CI | GitHub Actions: ruff format --check, ruff check, ty check, pytest | Postgres 16 service |
-
-Note: `expo-notifications` and `react-native-maps` are installed but not used by the current
-screen.
 
 ## 5. Quick start
 
@@ -703,11 +699,7 @@ This is a hackathon POC. Be aware of the following.
 - The app has no screens for incidents or data deletion, although the
   API supports them.
 - Registration and consent happen automatically on first launch; there is no consent screen.
-- Offline queueing helpers exist in `src/storage/TripStorage.ts` but are not used; a failed
-  final upload is retried 3 times and then dropped.
-- `mobile/src/types.ts` still holds legacy upload types that do not match the current API;
-  `src/api/client.ts` is the source of truth. Its `TripListItem` lacks the newer
-  classification fields.
+- There is no offline queue; a failed final upload is retried 3 times and then dropped.
 - Styling is plain React Native; NativeWind is planned (E4).
 
 **Security and data**
