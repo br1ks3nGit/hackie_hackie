@@ -59,7 +59,7 @@ Open (the director escalates these when the increment needs them):
 - [x] E2 Send `car_connected` with chunks so real trips score automatically: manual "I'm driving"
       toggle for now; automatic car-audio detection is H2.
 - [x] E3 Label unknown trips (driver / passenger).
-- [ ] E4 NativeWind setup and design tokens.
+- [x] E4 NativeWind setup and design tokens.
 
 ## Phase F - Insurer dashboard
 - [ ] F1 Basic staff login (env credentials, hashed password), cookie session, CSRF, base layout,

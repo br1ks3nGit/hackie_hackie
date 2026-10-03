@@ -151,7 +151,7 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 | Signal processing | numpy, pandas, scipy | 1.26.4, 2.2.3, 1.13.1 |
 | Model | pluggable pickle (scikit-learn style), placeholder rules by default | n/a |
 | Mobile | Expo SDK ~51, React Native 0.74.0, React 18.2.0, TypeScript ~5.3.3 | see `mobile/package.json` |
-| Mobile libs | expo-sensors ~13.0, expo-location ~17.0, async-storage 1.23.1 | |
+| Mobile libs | expo-sensors ~13.0, expo-location ~17.0, async-storage 1.23.1, NativeWind 4 + Tailwind 3.4 | |
 | Package manager | uv (backend), npm (mobile) | |
 | Lint / format / types | ruff, ty (ruff line length 100) | latest via `uv.lock` |
 | Tests | pytest 8.4.2, httpx 0.27.0, pytest-asyncio 0.24.0 | |
@@ -281,6 +281,15 @@ kept in AsyncStorage (`drivescore:driving_mode`) and is read at each chunk, so f
 mid-trip changes the share of "on" chunks from the next chunk. The backend needs more than 80%
 "on" chunks to classify the trip as `driver`; otherwise it is typically `unknown` (transit
 rules still apply) and goes to labelling.
+
+#### Styling (NativeWind)
+
+The app is styled with NativeWind v4 (Tailwind 3.4 classes via `className`). Design tokens (colors:
+`primary`, `surface`, `text`, `success/warning/danger/info` with `soft`/`ink`, `tier-a..e`) are in
+`mobile/tailwind.config.js` and use the same names and values as the dashboard's
+`backend/uno.config.ts` (see `docs/design-system.md`, "Token names"). Change a token in both
+files. Use literal class names (no string-built classes). `mobile/src/tokens.ts` mirrors two
+colors for the RN `Switch`, which cannot take classNames.
 
 #### Confirm trips
 
@@ -700,7 +709,7 @@ This is a hackathon POC. Be aware of the following.
   API supports them.
 - Registration and consent happen automatically on first launch; there is no consent screen.
 - There is no offline queue; a failed final upload is retried 3 times and then dropped.
-- Styling is plain React Native; NativeWind is planned (E4).
+- Styling uses NativeWind classes; there is no dark mode.
 
 **Security and data**
 - Anyone can call `register`; there is no rate limiting. One shared insurer key, no
