@@ -972,25 +972,39 @@
         "properties": {
           "version": {
             "type": "string",
-            "title": "Version"
+            "title": "Version",
+            "description": "Version of the consent text accepted.",
+            "examples": [
+              "1.0"
+            ]
           }
         },
         "type": "object",
         "required": [
           "version"
         ],
-        "title": "ConsentRequest"
+        "title": "ConsentRequest",
+        "description": "Request body of POST /v1/consent."
       },
       "ConsentResponse": {
         "properties": {
           "status": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "consent_recorded"
+            ],
+            "const": "consent_recorded",
+            "title": "Status",
+            "description": "Always consent_recorded."
           },
           "granted_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Granted At"
+            "title": "Granted At",
+            "description": "When consent was recorded (UTC).",
+            "examples": [
+              "2026-01-02T03:04:05Z"
+            ]
           }
         },
         "type": "object",
@@ -998,17 +1012,27 @@
           "status",
           "granted_at"
         ],
-        "title": "ConsentResponse"
+        "title": "ConsentResponse",
+        "description": "Response of POST /v1/consent."
       },
       "DeleteDriverResponse": {
         "properties": {
           "status": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "deleted"
+            ],
+            "const": "deleted",
+            "title": "Status",
+            "description": "Always deleted."
           },
           "deleted_files": {
             "type": "integer",
-            "title": "Deleted Files"
+            "title": "Deleted Files",
+            "description": "Raw chunk files removed from disk.",
+            "examples": [
+              5
+            ]
           }
         },
         "type": "object",
@@ -1016,7 +1040,8 @@
           "status",
           "deleted_files"
         ],
-        "title": "DeleteDriverResponse"
+        "title": "DeleteDriverResponse",
+        "description": "Response of DELETE /v1/me."
       },
       "DriverRegisterRequest": {
         "properties": {
@@ -1029,7 +1054,11 @@
                 "type": "null"
               }
             ],
-            "title": "Emergency Contact Name"
+            "title": "Emergency Contact Name",
+            "description": "Name of the emergency contact.",
+            "examples": [
+              "Alex Chan"
+            ]
           },
           "emergency_contact_phone": {
             "anyOf": [
@@ -1040,21 +1069,34 @@
                 "type": "null"
               }
             ],
-            "title": "Emergency Contact Phone"
+            "title": "Emergency Contact Phone",
+            "description": "Phone number of the emergency contact.",
+            "examples": [
+              "+85291234567"
+            ]
           }
         },
         "type": "object",
-        "title": "DriverRegisterRequest"
+        "title": "DriverRegisterRequest",
+        "description": "Request body of POST /v1/drivers/register."
       },
       "DriverRegisterResponse": {
         "properties": {
           "driver_id": {
             "type": "string",
-            "title": "Driver Id"
+            "title": "Driver Id",
+            "description": "Server-generated driver id.",
+            "examples": [
+              "drv_8f3a2c"
+            ]
           },
           "api_key": {
             "type": "string",
-            "title": "Api Key"
+            "title": "Api Key",
+            "description": "Secret key for the X-API-Key header. Shown once, stored only as a hash.",
+            "examples": [
+              "dk_live_example"
+            ]
           }
         },
         "type": "object",
@@ -1062,41 +1104,80 @@
           "driver_id",
           "api_key"
         ],
-        "title": "DriverRegisterResponse"
+        "title": "DriverRegisterResponse",
+        "description": "Response of POST /v1/drivers/register."
       },
       "DriverSummaryResponse": {
         "properties": {
           "driver_id": {
             "type": "string",
-            "title": "Driver Id"
+            "title": "Driver Id",
+            "description": "Driver id.",
+            "examples": [
+              "drv_8f3a2c"
+            ]
           },
           "score": {
             "type": "integer",
-            "title": "Score"
+            "title": "Score",
+            "description": "Average driver score 0 to 100, higher is safer.",
+            "examples": [
+              78
+            ]
           },
           "confidence": {
             "type": "number",
-            "title": "Confidence"
+            "title": "Confidence",
+            "description": "Average model output 0 to 1 (higher = riskier).",
+            "examples": [
+              0.22
+            ]
           },
           "tier": {
             "type": "string",
-            "title": "Tier"
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E"
+            ],
+            "title": "Tier",
+            "description": "Risk tier derived from score."
           },
           "premium_multiplier": {
             "type": "number",
-            "title": "Premium Multiplier"
+            "title": "Premium Multiplier",
+            "description": "Premium multiplier for the tier.",
+            "examples": [
+              1.0
+            ]
           },
           "trend": {
             "type": "string",
-            "title": "Trend"
+            "enum": [
+              "improving",
+              "stable",
+              "worsening"
+            ],
+            "title": "Trend",
+            "description": "Recent score movement."
           },
           "total_trips_90d": {
             "type": "integer",
-            "title": "Total Trips 90D"
+            "title": "Total Trips 90D",
+            "description": "Scored trips in the last 90 days.",
+            "examples": [
+              24
+            ]
           },
           "total_distance_km_90d": {
             "type": "number",
-            "title": "Total Distance Km 90D"
+            "title": "Total Distance Km 90D",
+            "description": "Distance in the last 90 days, km.",
+            "examples": [
+              310.5
+            ]
           }
         },
         "type": "object",
@@ -1110,18 +1191,30 @@
           "total_trips_90d",
           "total_distance_km_90d"
         ],
-        "title": "DriverSummaryResponse"
+        "title": "DriverSummaryResponse",
+        "description": "Response of GET /v1/me/summary (90-day rolling window)."
       },
       "EventResponse": {
         "properties": {
           "type": {
             "type": "string",
-            "title": "Type"
+            "enum": [
+              "harsh_brake",
+              "harsh_accel",
+              "sharp_corner",
+              "speeding"
+            ],
+            "title": "Type",
+            "description": "Kind of event."
           },
           "time": {
             "type": "string",
             "format": "date-time",
-            "title": "Time"
+            "title": "Time",
+            "description": "When it happened (UTC).",
+            "examples": [
+              "2026-01-02T03:04:05Z"
+            ]
           },
           "peak_g": {
             "anyOf": [
@@ -1132,7 +1225,11 @@
                 "type": "null"
               }
             ],
-            "title": "Peak G"
+            "title": "Peak G",
+            "description": "Peak acceleration in g; null for speeding events.",
+            "examples": [
+              0.45
+            ]
           },
           "lat": {
             "anyOf": [
@@ -1143,7 +1240,11 @@
                 "type": "null"
               }
             ],
-            "title": "Lat"
+            "title": "Lat",
+            "description": "Latitude, degrees.",
+            "examples": [
+              22.3193
+            ]
           },
           "lon": {
             "anyOf": [
@@ -1154,7 +1255,11 @@
                 "type": "null"
               }
             ],
-            "title": "Lon"
+            "title": "Lon",
+            "description": "Longitude, degrees.",
+            "examples": [
+              114.1694
+            ]
           }
         },
         "type": "object",
@@ -1165,25 +1270,38 @@
           "lat",
           "lon"
         ],
-        "title": "EventResponse"
+        "title": "EventResponse",
+        "description": "A detected driving event within a trip."
       },
       "GPSSample": {
         "properties": {
           "t": {
             "type": "integer",
-            "title": "T"
+            "title": "T",
+            "description": "Fix time, epoch milliseconds (UTC).",
+            "examples": [
+              1767225600000
+            ]
           },
           "lat": {
             "type": "number",
             "maximum": 90.0,
             "minimum": -90.0,
-            "title": "Lat"
+            "title": "Lat",
+            "description": "Latitude, degrees.",
+            "examples": [
+              22.3193
+            ]
           },
           "lon": {
             "type": "number",
             "maximum": 180.0,
             "minimum": -180.0,
-            "title": "Lon"
+            "title": "Lon",
+            "description": "Longitude, degrees.",
+            "examples": [
+              114.1694
+            ]
           },
           "speed": {
             "anyOf": [
@@ -1195,7 +1313,11 @@
                 "type": "null"
               }
             ],
-            "title": "Speed"
+            "title": "Speed",
+            "description": "Ground speed, m/s.",
+            "examples": [
+              13.4
+            ]
           },
           "heading": {
             "anyOf": [
@@ -1208,7 +1330,11 @@
                 "type": "null"
               }
             ],
-            "title": "Heading"
+            "title": "Heading",
+            "description": "Course over ground, degrees (0 to <360).",
+            "examples": [
+              90.0
+            ]
           },
           "accuracy": {
             "anyOf": [
@@ -1220,7 +1346,11 @@
                 "type": "null"
               }
             ],
-            "title": "Accuracy"
+            "title": "Accuracy",
+            "description": "Horizontal accuracy radius, metres.",
+            "examples": [
+              5.0
+            ]
           }
         },
         "type": "object",
@@ -1229,7 +1359,8 @@
           "lat",
           "lon"
         ],
-        "title": "GPSSample"
+        "title": "GPSSample",
+        "description": "One GPS fix."
       },
       "HTTPValidationError": {
         "properties": {
@@ -1248,31 +1379,59 @@
         "properties": {
           "t": {
             "type": "integer",
-            "title": "T"
+            "title": "T",
+            "description": "Sample time, epoch milliseconds (UTC).",
+            "examples": [
+              1767225600000
+            ]
           },
           "ax": {
             "type": "number",
-            "title": "Ax"
+            "title": "Ax",
+            "description": "Accelerometer x, g.",
+            "examples": [
+              0.02
+            ]
           },
           "ay": {
             "type": "number",
-            "title": "Ay"
+            "title": "Ay",
+            "description": "Accelerometer y, g.",
+            "examples": [
+              -0.01
+            ]
           },
           "az": {
             "type": "number",
-            "title": "Az"
+            "title": "Az",
+            "description": "Accelerometer z, g.",
+            "examples": [
+              0.98
+            ]
           },
           "gx": {
             "type": "number",
-            "title": "Gx"
+            "title": "Gx",
+            "description": "Gyroscope x, rad/s.",
+            "examples": [
+              0.001
+            ]
           },
           "gy": {
             "type": "number",
-            "title": "Gy"
+            "title": "Gy",
+            "description": "Gyroscope y, rad/s.",
+            "examples": [
+              0.0
+            ]
           },
           "gz": {
             "type": "number",
-            "title": "Gz"
+            "title": "Gz",
+            "description": "Gyroscope z, rad/s.",
+            "examples": [
+              -0.002
+            ]
           }
         },
         "type": "object",
@@ -1285,33 +1444,48 @@
           "gy",
           "gz"
         ],
-        "title": "IMUSample"
+        "title": "IMUSample",
+        "description": "One inertial sensor reading."
       },
       "IncidentConfirm": {
         "properties": {
           "confirmed": {
             "type": "string",
-            "pattern": "^(ok|help_needed|no_response)$",
-            "title": "Confirmed"
+            "enum": [
+              "ok",
+              "help_needed",
+              "no_response"
+            ],
+            "title": "Confirmed",
+            "description": "The driver's answer after a crash alert."
           }
         },
         "type": "object",
         "required": [
           "confirmed"
         ],
-        "title": "IncidentConfirm"
+        "title": "IncidentConfirm",
+        "description": "Request body of POST /v1/me/incidents/{incident_id}/confirm."
       },
       "IncidentCreate": {
         "properties": {
           "type": {
             "type": "string",
             "title": "Type",
-            "default": "crash"
+            "description": "Incident kind; only crash is produced today.",
+            "default": "crash",
+            "examples": [
+              "crash"
+            ]
           },
           "time": {
             "type": "string",
             "format": "date-time",
-            "title": "Time"
+            "title": "Time",
+            "description": "When it happened; naive values are read as UTC.",
+            "examples": [
+              "2026-01-02T03:04:05Z"
+            ]
           },
           "lat": {
             "anyOf": [
@@ -1322,7 +1496,11 @@
                 "type": "null"
               }
             ],
-            "title": "Lat"
+            "title": "Lat",
+            "description": "Latitude, degrees.",
+            "examples": [
+              22.3193
+            ]
           },
           "lon": {
             "anyOf": [
@@ -1333,7 +1511,11 @@
                 "type": "null"
               }
             ],
-            "title": "Lon"
+            "title": "Lon",
+            "description": "Longitude, degrees.",
+            "examples": [
+              114.1694
+            ]
           },
           "peak_g": {
             "anyOf": [
@@ -1344,7 +1526,11 @@
                 "type": "null"
               }
             ],
-            "title": "Peak G"
+            "title": "Peak G",
+            "description": "Peak acceleration, g.",
+            "examples": [
+              5.2
+            ]
           },
           "trip_id": {
             "anyOf": [
@@ -1355,40 +1541,57 @@
                 "type": "null"
               }
             ],
-            "title": "Trip Id"
+            "title": "Trip Id",
+            "description": "Related trip id, if any.",
+            "examples": [
+              "trp_1a2b3c"
+            ]
           },
           "sensor_snapshot": {
             "anyOf": [
               {
-                "type": "object"
+                "$ref": "#/components/schemas/SensorSnapshot"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Sensor Snapshot"
+            "description": "Sensor summary around the incident."
           }
         },
         "type": "object",
         "required": [
           "time"
         ],
-        "title": "IncidentCreate"
+        "title": "IncidentCreate",
+        "description": "Request body of POST /v1/me/incidents."
       },
       "IncidentResponse": {
         "properties": {
           "id": {
             "type": "integer",
-            "title": "Id"
+            "title": "Id",
+            "description": "Incident id.",
+            "examples": [
+              1
+            ]
           },
           "type": {
             "type": "string",
-            "title": "Type"
+            "title": "Type",
+            "description": "Incident kind, e.g. crash.",
+            "examples": [
+              "crash"
+            ]
           },
           "time": {
             "type": "string",
             "format": "date-time",
-            "title": "Time"
+            "title": "Time",
+            "description": "When it happened (UTC).",
+            "examples": [
+              "2026-01-02T03:04:05Z"
+            ]
           },
           "lat": {
             "anyOf": [
@@ -1399,7 +1602,11 @@
                 "type": "null"
               }
             ],
-            "title": "Lat"
+            "title": "Lat",
+            "description": "Latitude, degrees.",
+            "examples": [
+              22.3193
+            ]
           },
           "lon": {
             "anyOf": [
@@ -1410,7 +1617,11 @@
                 "type": "null"
               }
             ],
-            "title": "Lon"
+            "title": "Lon",
+            "description": "Longitude, degrees.",
+            "examples": [
+              114.1694
+            ]
           },
           "peak_g": {
             "anyOf": [
@@ -1421,23 +1632,37 @@
                 "type": "null"
               }
             ],
-            "title": "Peak G"
+            "title": "Peak G",
+            "description": "Peak acceleration, g.",
+            "examples": [
+              5.2
+            ]
           },
           "confirmed": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "help_needed",
+                  "no_response"
+                ]
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Confirmed"
+            "title": "Confirmed",
+            "description": "Driver's answer; null until confirmed."
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Created At",
+            "description": "Record creation (UTC).",
+            "examples": [
+              "2026-01-02T03:04:05Z"
+            ]
           }
         },
         "type": "object",
@@ -1451,58 +1676,114 @@
           "confirmed",
           "created_at"
         ],
-        "title": "IncidentResponse"
+        "title": "IncidentResponse",
+        "description": "An incident record."
       },
       "InsurerDriverDetailResponse": {
         "properties": {
           "driver_id": {
             "type": "string",
-            "title": "Driver Id"
+            "title": "Driver Id",
+            "description": "Driver id.",
+            "examples": [
+              "drv_8f3a2c"
+            ]
           },
           "score": {
             "type": "integer",
-            "title": "Score"
+            "title": "Score",
+            "description": "Average driver score 0 to 100.",
+            "examples": [
+              78
+            ]
           },
           "confidence": {
             "type": "number",
-            "title": "Confidence"
+            "title": "Confidence",
+            "description": "Average model output 0 to 1 (higher = riskier).",
+            "examples": [
+              0.22
+            ]
           },
           "tier": {
             "type": "string",
-            "title": "Tier"
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E"
+            ],
+            "title": "Tier",
+            "description": "Risk tier derived from score."
           },
           "premium_multiplier": {
             "type": "number",
-            "title": "Premium Multiplier"
+            "title": "Premium Multiplier",
+            "description": "Premium multiplier for the tier.",
+            "examples": [
+              1.0
+            ]
           },
           "event_rates": {
+            "additionalProperties": {
+              "type": "integer"
+            },
             "type": "object",
-            "title": "Event Rates"
+            "title": "Event Rates",
+            "description": "Raw event counts by type over the last 90 days (counts, not rates per km).",
+            "examples": [
+              {
+                "harsh_brake": 4,
+                "speeding": 7
+              }
+            ]
           },
           "trips": {
             "items": {
               "$ref": "#/components/schemas/TripListItem"
             },
             "type": "array",
-            "title": "Trips"
+            "title": "Trips",
+            "description": "Most recent 20 trips, newest first."
           },
           "model_version": {
             "type": "string",
-            "title": "Model Version"
+            "title": "Model Version",
+            "description": "Model version of the latest scored trip; 'unknown' if none.",
+            "examples": [
+              "v1"
+            ]
           },
           "passenger_share": {
             "type": "number",
             "title": "Passenger Share",
-            "default": 0.0
+            "description": "Share of trips classified passenger or transit (0 to 1).",
+            "default": 0.0,
+            "examples": [
+              0.1
+            ]
           },
           "label_sources": {
+            "additionalProperties": {
+              "type": "integer"
+            },
             "type": "object",
             "title": "Label Sources",
-            "default": {}
+            "description": "Trip counts by label source. Keys: user, bluetooth, rules, unlabelled (empty object when the driver has no trips).",
+            "examples": [
+              {
+                "bluetooth": 10,
+                "rules": 3,
+                "unlabelled": 1,
+                "user": 2
+              }
+            ]
           },
           "flagged_for_review": {
             "type": "boolean",
             "title": "Flagged For Review",
+            "description": "True when passenger_share exceeds the review threshold.",
             "default": false
           }
         },
@@ -1517,37 +1798,70 @@
           "trips",
           "model_version"
         ],
-        "title": "InsurerDriverDetailResponse"
+        "title": "InsurerDriverDetailResponse",
+        "description": "Response of GET /v1/insurer/drivers/{driver_id}."
       },
       "InsurerDriverItem": {
         "properties": {
           "driver_id": {
             "type": "string",
-            "title": "Driver Id"
+            "title": "Driver Id",
+            "description": "Driver id.",
+            "examples": [
+              "drv_8f3a2c"
+            ]
           },
           "score": {
             "type": "integer",
-            "title": "Score"
+            "title": "Score",
+            "description": "Average driver score 0 to 100.",
+            "examples": [
+              78
+            ]
           },
           "confidence": {
             "type": "number",
-            "title": "Confidence"
+            "title": "Confidence",
+            "description": "Average model output 0 to 1 (higher = riskier).",
+            "examples": [
+              0.22
+            ]
           },
           "tier": {
             "type": "string",
-            "title": "Tier"
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E"
+            ],
+            "title": "Tier",
+            "description": "Risk tier derived from score."
           },
           "premium_multiplier": {
             "type": "number",
-            "title": "Premium Multiplier"
+            "title": "Premium Multiplier",
+            "description": "Premium multiplier for the tier.",
+            "examples": [
+              1.0
+            ]
           },
           "total_trips_90d": {
             "type": "integer",
-            "title": "Total Trips 90D"
+            "title": "Total Trips 90D",
+            "description": "Scored trips in the last 90 days.",
+            "examples": [
+              24
+            ]
           },
           "total_distance_km_90d": {
             "type": "number",
-            "title": "Total Distance Km 90D"
+            "title": "Total Distance Km 90D",
+            "description": "Distance in the last 90 days, km.",
+            "examples": [
+              310.5
+            ]
           }
         },
         "type": "object",
@@ -1560,25 +1874,49 @@
           "total_trips_90d",
           "total_distance_km_90d"
         ],
-        "title": "InsurerDriverItem"
+        "title": "InsurerDriverItem",
+        "description": "A driver row in the insurer driver list."
       },
       "InsurerOverviewResponse": {
         "properties": {
           "total_drivers": {
             "type": "integer",
-            "title": "Total Drivers"
+            "title": "Total Drivers",
+            "description": "Drivers with at least one scored trip.",
+            "examples": [
+              42
+            ]
           },
           "total_trips_90d": {
             "type": "integer",
-            "title": "Total Trips 90D"
+            "title": "Total Trips 90D",
+            "description": "Scored trips in the last 90 days.",
+            "examples": [
+              310
+            ]
           },
           "tier_distribution": {
+            "additionalProperties": {
+              "type": "integer"
+            },
             "type": "object",
-            "title": "Tier Distribution"
+            "title": "Tier Distribution",
+            "description": "Raw count of scored trips per tier (not percentages).",
+            "examples": [
+              {
+                "A": 10,
+                "B": 20,
+                "C": 5
+              }
+            ]
           },
           "average_multiplier": {
             "type": "number",
-            "title": "Average Multiplier"
+            "title": "Average Multiplier",
+            "description": "Mean premium multiplier, weighted by trips per tier.",
+            "examples": [
+              1.05
+            ]
           }
         },
         "type": "object",
@@ -1588,17 +1926,27 @@
           "tier_distribution",
           "average_multiplier"
         ],
-        "title": "InsurerOverviewResponse"
+        "title": "InsurerOverviewResponse",
+        "description": "Response of GET /v1/insurer/overview."
       },
       "ReprocessResponse": {
         "properties": {
           "trip_id": {
             "type": "string",
-            "title": "Trip Id"
+            "title": "Trip Id",
+            "description": "Trip id.",
+            "examples": [
+              "trp_1a2b3c"
+            ]
           },
           "status": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "processing"
+            ],
+            "const": "processing",
+            "title": "Status",
+            "description": "Trip was queued again."
           }
         },
         "type": "object",
@@ -1606,17 +1954,26 @@
           "trip_id",
           "status"
         ],
-        "title": "ReprocessResponse"
+        "title": "ReprocessResponse",
+        "description": "Response of POST /v1/trips/{trip_id}/reprocess."
       },
       "RoutePoint": {
         "properties": {
           "lat": {
             "type": "number",
-            "title": "Lat"
+            "title": "Lat",
+            "description": "Latitude, degrees.",
+            "examples": [
+              22.3193
+            ]
           },
           "lon": {
             "type": "number",
-            "title": "Lon"
+            "title": "Lon",
+            "description": "Longitude, degrees.",
+            "examples": [
+              114.1694
+            ]
           },
           "speed": {
             "anyOf": [
@@ -1627,7 +1984,11 @@
                 "type": "null"
               }
             ],
-            "title": "Speed"
+            "title": "Speed",
+            "description": "GPS speed, m/s; null if unknown.",
+            "examples": [
+              13.4
+            ]
           }
         },
         "type": "object",
@@ -1636,14 +1997,72 @@
           "lon",
           "speed"
         ],
-        "title": "RoutePoint"
+        "title": "RoutePoint",
+        "description": "A downsampled route point."
+      },
+      "SensorSnapshot": {
+        "properties": {
+          "peak_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak G",
+            "description": "Peak acceleration, g.",
+            "examples": [
+              5.2
+            ]
+          },
+          "imu_samples": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imu Samples",
+            "description": "Number of IMU samples in the window.",
+            "examples": [
+              750
+            ]
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms",
+            "description": "Window length, milliseconds.",
+            "examples": [
+              15000
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "SensorSnapshot",
+        "description": "Summary of sensor data around a crash. Extra keys from clients are kept."
       },
       "TripChunkRequest": {
         "properties": {
           "seq": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Seq"
+            "title": "Seq",
+            "description": "Chunk sequence number from 0; re-sending a seq is idempotent.",
+            "examples": [
+              0
+            ]
           },
           "imu": {
             "items": {
@@ -1651,7 +2070,8 @@
             },
             "type": "array",
             "minItems": 1,
-            "title": "Imu"
+            "title": "Imu",
+            "description": "IMU samples in ascending time order."
           },
           "gps": {
             "items": {
@@ -1659,7 +2079,8 @@
             },
             "type": "array",
             "minItems": 1,
-            "title": "Gps"
+            "title": "Gps",
+            "description": "GPS fixes in ascending time order."
           },
           "car_connected": {
             "anyOf": [
@@ -1670,7 +2091,11 @@
                 "type": "null"
               }
             ],
-            "title": "Car Connected"
+            "title": "Car Connected",
+            "description": "Whether the phone was connected to the car via Bluetooth during this chunk.",
+            "examples": [
+              true
+            ]
           }
         },
         "type": "object",
@@ -1679,18 +2104,28 @@
           "imu",
           "gps"
         ],
-        "title": "TripChunkRequest"
+        "title": "TripChunkRequest",
+        "description": "Request body of POST /v1/trips/{trip_id}/chunks (one slice of sensor data)."
       },
       "TripChunkResponse": {
         "properties": {
           "status": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "received",
+              "already_received"
+            ],
+            "title": "Status",
+            "description": "already_received when this seq was uploaded before."
           },
           "received_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Received At"
+            "title": "Received At",
+            "description": "When the chunk was first stored (UTC).",
+            "examples": [
+              "2026-01-02T03:04:05Z"
+            ]
           }
         },
         "type": "object",
@@ -1698,18 +2133,27 @@
           "status",
           "received_at"
         ],
-        "title": "TripChunkResponse"
+        "title": "TripChunkResponse",
+        "description": "Response of POST /v1/trips/{trip_id}/chunks."
       },
       "TripDetailResponse": {
         "properties": {
           "trip_id": {
             "type": "string",
-            "title": "Trip Id"
+            "title": "Trip Id",
+            "description": "Trip id.",
+            "examples": [
+              "trp_1a2b3c"
+            ]
           },
           "started_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Started At"
+            "title": "Started At",
+            "description": "Trip start (UTC).",
+            "examples": [
+              "2026-01-02T03:04:05Z"
+            ]
           },
           "ended_at": {
             "anyOf": [
@@ -1721,15 +2165,24 @@
                 "type": "null"
               }
             ],
-            "title": "Ended At"
+            "title": "Ended At",
+            "description": "Trip end (UTC); null while ongoing."
           },
           "distance_km": {
             "type": "number",
-            "title": "Distance Km"
+            "title": "Distance Km",
+            "description": "Distance driven, km (0 if not yet computed).",
+            "examples": [
+              12.34
+            ]
           },
           "duration_min": {
             "type": "number",
-            "title": "Duration Min"
+            "title": "Duration Min",
+            "description": "Duration, minutes (0 if not yet computed).",
+            "examples": [
+              21.5
+            ]
           },
           "score": {
             "anyOf": [
@@ -1740,7 +2193,11 @@
                 "type": "null"
               }
             ],
-            "title": "Score"
+            "title": "Score",
+            "description": "Trip score 0 to 100, higher is safer.",
+            "examples": [
+              82
+            ]
           },
           "confidence": {
             "anyOf": [
@@ -1751,32 +2208,46 @@
                 "type": "null"
               }
             ],
-            "title": "Confidence"
+            "title": "Confidence",
+            "description": "Model output 0 to 1 (higher = riskier); score = 100 * (1 - confidence).",
+            "examples": [
+              0.18
+            ]
           },
           "tier": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "A",
+                  "B",
+                  "C",
+                  "D",
+                  "E"
+                ]
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Tier"
+            "title": "Tier",
+            "description": "Risk tier derived from score; null if unscored."
           },
           "events": {
             "items": {
               "$ref": "#/components/schemas/EventResponse"
             },
             "type": "array",
-            "title": "Events"
+            "title": "Events",
+            "description": "Detected events, in time order."
           },
           "route": {
             "items": {
               "$ref": "#/components/schemas/RoutePoint"
             },
             "type": "array",
-            "title": "Route"
+            "title": "Route",
+            "description": "Downsampled route, at most about 100 points."
           },
           "explanation": {
             "anyOf": [
@@ -1787,7 +2258,8 @@
                 "type": "null"
               }
             ],
-            "title": "Explanation"
+            "title": "Explanation",
+            "description": "Plain-language summary of the score."
           }
         },
         "type": "object",
@@ -1804,48 +2276,78 @@
           "route",
           "explanation"
         ],
-        "title": "TripDetailResponse"
+        "title": "TripDetailResponse",
+        "description": "Response of GET /v1/me/trips/{trip_id}."
       },
       "TripEndResponse": {
         "properties": {
           "status": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "processing"
+            ],
+            "const": "processing",
+            "title": "Status",
+            "description": "Trip is queued for processing."
           }
         },
         "type": "object",
         "required": [
           "status"
         ],
-        "title": "TripEndResponse"
+        "title": "TripEndResponse",
+        "description": "Response of POST /v1/trips/{trip_id}/end."
       },
       "TripLabelRequest": {
         "properties": {
           "trip_type": {
             "type": "string",
-            "pattern": "^(driver|passenger)$",
-            "title": "Trip Type"
+            "enum": [
+              "driver",
+              "passenger"
+            ],
+            "title": "Trip Type",
+            "description": "Label chosen by the driver.",
+            "examples": [
+              "driver"
+            ]
           }
         },
         "type": "object",
         "required": [
           "trip_type"
         ],
-        "title": "TripLabelRequest"
+        "title": "TripLabelRequest",
+        "description": "Request body of POST /v1/me/trips/{trip_id}/label."
       },
       "TripLabelResponse": {
         "properties": {
           "trip_id": {
             "type": "string",
-            "title": "Trip Id"
+            "title": "Trip Id",
+            "description": "Trip id.",
+            "examples": [
+              "trp_1a2b3c"
+            ]
           },
           "trip_type": {
             "type": "string",
-            "title": "Trip Type"
+            "enum": [
+              "driver",
+              "passenger"
+            ],
+            "title": "Trip Type",
+            "description": "Label that was stored."
           },
           "status": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "added_to_score",
+              "removed_from_score",
+              "relabelled"
+            ],
+            "title": "Status",
+            "description": "Effect on the driver's score."
           }
         },
         "type": "object",
@@ -1854,22 +2356,35 @@
           "trip_type",
           "status"
         ],
-        "title": "TripLabelResponse"
+        "title": "TripLabelResponse",
+        "description": "Response of POST /v1/me/trips/{trip_id}/label."
       },
       "TripListItem": {
         "properties": {
           "trip_id": {
             "type": "string",
-            "title": "Trip Id"
+            "title": "Trip Id",
+            "description": "Trip id.",
+            "examples": [
+              "trp_1a2b3c"
+            ]
           },
           "started_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Started At"
+            "title": "Started At",
+            "description": "Trip start (UTC).",
+            "examples": [
+              "2026-01-02T03:04:05Z"
+            ]
           },
           "distance_km": {
             "type": "number",
-            "title": "Distance Km"
+            "title": "Distance Km",
+            "description": "Distance driven, km.",
+            "examples": [
+              12.34
+            ]
           },
           "score": {
             "anyOf": [
@@ -1880,45 +2395,71 @@
                 "type": "null"
               }
             ],
-            "title": "Score"
+            "title": "Score",
+            "description": "Trip score 0 to 100; null if unscored.",
+            "examples": [
+              82
+            ]
           },
           "tier": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "A",
+                  "B",
+                  "C",
+                  "D",
+                  "E"
+                ]
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Tier"
+            "title": "Tier",
+            "description": "Risk tier; null if unscored."
           },
           "trip_type": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "driver",
+                  "passenger",
+                  "transit",
+                  "unknown"
+                ]
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Trip Type"
+            "title": "Trip Type",
+            "description": "Who was driving; null until classified."
           },
           "needs_confirmation": {
             "type": "boolean",
             "title": "Needs Confirmation",
+            "description": "True when the app should ask the user to label this unknown trip.",
             "default": false
           },
           "label_source": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "bluetooth",
+                  "rules",
+                  "user"
+                ]
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Label Source"
+            "title": "Label Source",
+            "description": "Who decided trip_type; null if unlabelled."
           },
           "transit_line": {
             "anyOf": [
@@ -1929,7 +2470,11 @@
                 "type": "null"
               }
             ],
-            "title": "Transit Line"
+            "title": "Transit Line",
+            "description": "Detected transit line for transit trips.",
+            "examples": [
+              "MTR Tsuen Wan Line"
+            ]
           }
         },
         "type": "object",
@@ -1940,30 +2485,47 @@
           "score",
           "tier"
         ],
-        "title": "TripListItem"
+        "title": "TripListItem",
+        "description": "A trip row in trip lists."
       },
       "TripStartResponse": {
         "properties": {
           "trip_id": {
             "type": "string",
-            "title": "Trip Id"
+            "title": "Trip Id",
+            "description": "Id of the new trip (status uploading).",
+            "examples": [
+              "trp_1a2b3c"
+            ]
           }
         },
         "type": "object",
         "required": [
           "trip_id"
         ],
-        "title": "TripStartResponse"
+        "title": "TripStartResponse",
+        "description": "Response of POST /v1/trips/start."
       },
       "TripStatusResponse": {
         "properties": {
           "trip_id": {
             "type": "string",
-            "title": "Trip Id"
+            "title": "Trip Id",
+            "description": "Trip id.",
+            "examples": [
+              "trp_1a2b3c"
+            ]
           },
           "status": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "uploading",
+              "processing",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
+            "description": "Processing state of the trip."
           },
           "failure_reason": {
             "anyOf": [
@@ -1974,7 +2536,8 @@
                 "type": "null"
               }
             ],
-            "title": "Failure Reason"
+            "title": "Failure Reason",
+            "description": "Why processing failed; only set when status is failed."
           }
         },
         "type": "object",
@@ -1982,7 +2545,8 @@
           "trip_id",
           "status"
         ],
-        "title": "TripStatusResponse"
+        "title": "TripStatusResponse",
+        "description": "Response of GET /v1/trips/{trip_id}/status."
       },
       "ValidationError": {
         "properties": {

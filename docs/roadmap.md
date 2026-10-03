@@ -42,7 +42,7 @@ Open (the director escalates these when the increment needs them):
       `invalid-assignment` rules go back to error.
 - [ ] A9 FK indexes: `index=True` on `trips.driver_id`, `events.trip_id`, `incidents.driver_id`,
       `incidents.trip_id`, `consents.driver_id` + revision 0002 (keeps the drift test green).
-- [ ] A10 Readable schema: `Literal` types for status/tier/type fields, `Field(description, examples)`
+- [x] A10 Readable schema: `Literal` types for status/tier/type fields, `Field(description, examples)`
       on every API schema, typed models instead of bare dicts, a `TripFeatures` Pydantic model for
       the pipeline/model contract, table docstrings and column comments, `docs/data-model.md` with
       a Mermaid ER diagram and allowed values.

@@ -1,12 +1,13 @@
 import unittest.mock
 from datetime import UTC, datetime
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.database import SessionLocal
 from app.main import app
-from app.models import Trip
+from app.models import Incident, Trip
 
 client = TestClient(app)
 
@@ -285,3 +286,57 @@ def test_insurer_detail_includes_passenger_share():
     assert "passenger_share" in data
     assert "label_sources" in data
     assert "flagged_for_review" in data
+
+
+def test_incident_sensor_snapshot_keeps_extra_and_null_omits_unset():
+    _driver_id, api_key = _register_and_consent()
+
+    response = client.post(
+        "/v1/me/incidents",
+        headers={"X-API-Key": api_key},
+        json={
+            "type": "crash",
+            "time": datetime.now(UTC).isoformat(),
+            "sensor_snapshot": {"peak_g": 4.5, "vendor_flag": "x", "imu_samples": None},
+        },
+    )
+    assert response.status_code == 200
+
+    with SessionLocal() as db:
+        incident = db.get(Incident, response.json()["id"])
+        assert incident is not None
+        assert incident.sensor_snapshot == {
+            "peak_g": 4.5,
+            "vendor_flag": "x",
+            "imu_samples": None,
+        }
+
+
+@pytest.mark.parametrize("trip_type", ["transit", "bogus"])
+def test_label_trip_rejects_invalid_trip_type(trip_type):
+    _driver_id, api_key = _register_and_consent()
+    trip_id = _upload_trip(api_key, [])
+
+    response = client.post(
+        f"/v1/me/trips/{trip_id}/label",
+        headers={"X-API-Key": api_key},
+        json={"trip_type": trip_type},
+    )
+    assert response.status_code == 422
+
+
+def test_incident_confirm_rejects_invalid_value():
+    _driver_id, api_key = _register_and_consent()
+    response = client.post(
+        "/v1/me/incidents",
+        headers={"X-API-Key": api_key},
+        json={"type": "crash", "time": datetime.now(UTC).isoformat()},
+    )
+    incident_id = response.json()["id"]
+
+    response = client.post(
+        f"/v1/me/incidents/{incident_id}/confirm",
+        headers={"X-API-Key": api_key},
+        json={"confirmed": "maybe"},
+    )
+    assert response.status_code == 422
