@@ -38,8 +38,6 @@ def _classify(
             "transit_line": trip.transit_line,
         }
 
-    # Classify BEFORE the quality check so underground-MTR GPS gaps
-    # are recognised as transit instead of failing the trip
     classification = classify_trip(
         gps_df=gps_df,
         imu_df=imu_df,
@@ -59,8 +57,8 @@ def _add_incidents(db: Session, trip: Trip, trip_id: str, crashes: list[dict[str
             trip_id=trip_id,
             type="crash",
             time=crash_data["time"],
-            lat=crash_data["lat"],
-            lon=crash_data["lon"],
+            lat=None,
+            lon=None,
             peak_g=crash_data["peak_g"],
             sensor_snapshot=crash_data["sensor_snapshot"],
         )
@@ -75,8 +73,8 @@ def _add_events(db: Session, trip_id: str, events: list[dict[str, Any]]) -> None
             type=event_data["type"],
             time=event_data["time"],
             peak_g=event_data["peak_g"],
-            lat=event_data["lat"],
-            lon=event_data["lon"],
+            lat=None,
+            lon=None,
         )
         db.add(event)
 

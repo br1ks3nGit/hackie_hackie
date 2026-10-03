@@ -14,17 +14,40 @@ from app.pipeline import (
 )
 
 
-def test_calculate_distance_km():
-    # Test with known coordinates (Hong Kong to Kowloon)
-    gps_df = pd.DataFrame(
-        {
-            "lat": [22.3193, 22.3200, 22.3210],
-            "lon": [114.1694, 114.1700, 114.1710],
-        }
-    )
-    distance = _calculate_distance_km(gps_df)
-    assert distance > 0
-    assert distance < 10  # should be a few km
+def _speed_df(speeds, step_ms=1000, start_t=1000000000000):
+    t = [start_t + i * step_ms for i in range(len(speeds))]
+    return pd.DataFrame({"t": t, "speed": speeds})
+
+
+def test_calculate_distance_km_constant_speed():
+    # 10 m/s for 100 s -> 1000 m
+    gps_df = _speed_df([10.0] * 101)
+    assert _calculate_distance_km(gps_df) == pytest.approx(1.0)
+
+
+def test_calculate_distance_km_trapezoid():
+    # speed ramps 0 -> 20 m/s over 10 s: mean 10 m/s -> 100 m
+    gps_df = _speed_df([0.0, 20.0], step_ms=10000)
+    assert _calculate_distance_km(gps_df) == pytest.approx(0.1)
+
+
+def test_calculate_distance_km_ignores_bad_speeds():
+    gps_df = _speed_df([10.0, None, -5.0, 10.0])
+    # intervals: (10+0)/2 + (0+0)/2 + (0+10)/2 = 10 m
+    assert _calculate_distance_km(gps_df) == pytest.approx(0.01)
+
+
+def test_calculate_distance_km_caps_gaps():
+    from app.config import get_settings
+
+    cap = get_settings().trip_max_gps_gap_s
+    # one 1000 s gap at constant 10 m/s adds at most cap seconds of distance
+    gps_df = _speed_df([10.0, 10.0], step_ms=1_000_000)
+    assert _calculate_distance_km(gps_df) == pytest.approx(10.0 * cap / 1000.0)
+
+
+def test_calculate_distance_km_needs_no_coordinates():
+    assert _calculate_distance_km(_speed_df([10.0])) == 0.0
 
 
 def test_resample_imu():
@@ -147,15 +170,11 @@ def test_calculate_features():
             "type": "harsh_brake",
             "time": datetime.now(UTC),
             "peak_g": 0.5,
-            "lat": 22.32,
-            "lon": 114.17,
         },
         {
             "type": "harsh_accel",
             "time": datetime.now(UTC),
             "peak_g": 0.4,
-            "lat": 22.32,
-            "lon": 114.17,
         },
     ]
 
@@ -207,7 +226,8 @@ def test_features_validate_and_keep_stored_shape():
 
     assert list(stored) == list(raw)
     assert list(stored["events_per_100km"]) == list(raw["events_per_100km"])
-    assert list(stored["route"][0]) == ["t", "lat", "lon", "speed"]
+    assert "route" not in stored
+    assert "route" not in raw
 
 
 def test_validate_features_invalid_raises_short_pipeline_error():

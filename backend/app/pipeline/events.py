@@ -30,23 +30,23 @@ def _detect_events(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> list[dict[str,
 
     # Detect harsh braking
     brake_mask = imu_df["accel_forward"] < harsh_brake_threshold
-    brake_events = _find_peaks(imu_df, brake_mask, "harsh_brake", gps_df)
+    brake_events = _find_peaks(imu_df, brake_mask, "harsh_brake")
     events.extend(brake_events)
 
     # Detect harsh acceleration
     accel_mask = imu_df["accel_forward"] > harsh_accel_threshold
-    accel_events = _find_peaks(imu_df, accel_mask, "harsh_accel", gps_df)
+    accel_events = _find_peaks(imu_df, accel_mask, "harsh_accel")
     events.extend(accel_events)
 
     # Detect sharp cornering
     corner_mask = np.abs(imu_df["accel_lateral"]) > sharp_corner_threshold
-    corner_events = _find_peaks(imu_df, corner_mask, "sharp_corner", gps_df)
+    corner_events = _find_peaks(imu_df, corner_mask, "sharp_corner")
     events.extend(corner_events)
 
     # Detect speeding: merge consecutive speeding samples into runs and emit
-    # ONE event per run longer than 10s (time/lat/lon of the run start)
+    # ONE event per run longer than 10s (time of the run start)
     speeding_mask = nearest_speeds > SPEEDING_THRESHOLD_MS
-    events.extend(_find_speeding_runs(imu_df, speeding_mask, gps_df))
+    events.extend(_find_speeding_runs(imu_df, speeding_mask))
 
     return events
 
@@ -54,7 +54,6 @@ def _detect_events(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> list[dict[str,
 def _find_speeding_runs(
     imu_df: pd.DataFrame,
     mask,
-    gps_df: pd.DataFrame,
     min_duration_s: float = 10.0,
 ) -> list[dict[str, Any]]:
     """Merge consecutive speeding samples into runs; one event per run > min_duration_s."""
@@ -76,14 +75,11 @@ def _find_speeding_runs(
         duration_s = (times[end] - times[start]) / 1000.0
         if duration_s > min_duration_s:
             row = imu_df.iloc[start]
-            nearest_gps = _find_nearest_gps(row["t"], gps_df)
             events.append(
                 {
                     "type": "speeding",
                     "time": row["time"],
                     "peak_g": None,
-                    "lat": nearest_gps["lat"],
-                    "lon": nearest_gps["lon"],
                 }
             )
         i += 1
@@ -91,9 +87,7 @@ def _find_speeding_runs(
     return events
 
 
-def _find_peaks(
-    imu_df: pd.DataFrame, mask: pd.Series, event_type: str, gps_df: pd.DataFrame
-) -> list[dict[str, Any]]:
+def _find_peaks(imu_df: pd.DataFrame, mask: pd.Series, event_type: str) -> list[dict[str, Any]]:
     """Find peak events in a boolean mask."""
     events = []
     in_event = False
@@ -118,39 +112,26 @@ def _find_peaks(
         elif not active and in_event:
             in_event = False
             row = imu_df.iloc[peak_idx]
-            nearest_gps = _find_nearest_gps(row["t"], gps_df)
             events.append(
                 {
                     "type": event_type,
                     "time": row["time"],
                     "peak_g": float(abs(peak_val)),
-                    "lat": nearest_gps["lat"],
-                    "lon": nearest_gps["lon"],
                 }
             )
 
     # Flush an event still open at the end of the array
     if in_event and peak_idx is not None:
         row = imu_df.iloc[peak_idx]
-        nearest_gps = _find_nearest_gps(row["t"], gps_df)
         events.append(
             {
                 "type": event_type,
                 "time": row["time"],
                 "peak_g": float(abs(peak_val)),
-                "lat": nearest_gps["lat"],
-                "lon": nearest_gps["lon"],
             }
         )
 
     return events
-
-
-def _find_nearest_gps(t: int, gps_df: pd.DataFrame) -> dict[str, float]:
-    """Find nearest GPS point to a timestamp."""
-    idx = (gps_df["t"] - t).abs().idxmin()
-    row = gps_df.loc[idx]
-    return {"lat": row["lat"], "lon": row["lon"]}
 
 
 CRASH_PEAK_G = 4.0
@@ -202,11 +183,8 @@ def _is_crash_candidate(
     return not post_accel_mag.std() > 0.5
 
 
-def _build_crash(
-    imu_df: pd.DataFrame, gps_df: pd.DataFrame, peak_idx: int, peak_g: float
-) -> dict[str, Any]:
+def _build_crash(imu_df: pd.DataFrame, peak_idx: int, peak_g: float) -> dict[str, Any]:
     peak_time_ms = imu_df["t"].iloc[peak_idx]
-    nearest_gps = _find_nearest_gps(peak_time_ms, gps_df)
 
     # Capture sensor snapshot around the crash
     snapshot_start = peak_time_ms - 5000
@@ -222,8 +200,6 @@ def _build_crash(
         "type": "crash",
         "time": imu_df["time"].iloc[peak_idx],
         "peak_g": peak_g,
-        "lat": nearest_gps["lat"],
-        "lon": nearest_gps["lon"],
         "sensor_snapshot": sensor_snapshot,
     }
 
@@ -257,6 +233,6 @@ def _detect_crashes(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> list[dict[str
         peak_time_ms = imu_df["t"].iloc[peak_idx]
         if not _is_crash_candidate(imu_df, gps_df, peak_time_ms, mag_cols):
             continue
-        crashes.append(_build_crash(imu_df, gps_df, peak_idx, float(accel_mag.iloc[peak_idx])))
+        crashes.append(_build_crash(imu_df, peak_idx, float(accel_mag.iloc[peak_idx])))
 
     return crashes

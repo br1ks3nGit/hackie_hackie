@@ -88,7 +88,7 @@ def _quality_check(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> None:
             f"Trip too short: {duration_s:.1f}s < {settings.trip_min_duration_s}s"
         )
 
-    # Check distance (haversine)
+    # Check distance (integrated GPS speed)
     distance_km = _calculate_distance_km(gps_df)
     if distance_km < settings.trip_min_distance_km:
         raise QualityCheckError(
@@ -97,14 +97,17 @@ def _quality_check(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> None:
 
 
 def _calculate_distance_km(gps_df: pd.DataFrame) -> float:
-    lat1 = np.radians(gps_df["lat"].iloc[:-1].values)
-    lon1 = np.radians(gps_df["lon"].iloc[:-1].values)
-    lat2 = np.radians(gps_df["lat"].iloc[1:].values)
-    lon2 = np.radians(gps_df["lon"].iloc[1:].values)
+    """Distance from GPS speed: trapezoid integral of speed (m/s) over time.
 
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-    distance_m = 6371000 * c
-    return float(np.sum(distance_m) / 1000.0)
+    Negative or missing speeds count as 0; each interval is capped at the max GPS gap so a
+    long gap does not add phantom distance. Uses no coordinates.
+    """
+    if len(gps_df) < 2:
+        return 0.0
+    t = gps_df["t"].to_numpy(dtype=float)
+    speed = pd.to_numeric(gps_df["speed"], errors="coerce").to_numpy(dtype=float)
+    speed = np.where(np.isnan(speed) | (speed < 0), 0.0, speed)
+    dt_s = np.minimum(np.diff(t) / 1000.0, settings.trip_max_gps_gap_s)
+    dt_s = np.maximum(dt_s, 0.0)
+    distance_m = np.sum((speed[:-1] + speed[1:]) / 2.0 * dt_s)
+    return float(distance_m / 1000.0)
