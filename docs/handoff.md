@@ -149,8 +149,8 @@ GET /trips/{trip_id}
 
 ```bash
 cd backend
-pip3 install -r requirements.txt
-python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
+uv sync
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 ### Run the integration test

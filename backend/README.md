@@ -13,7 +13,7 @@ This backend is the connection layer between the mobile app, the ML model, and t
 
 ```bash
 cd backend
-pip3 install -r requirements.txt
+uv sync
 ```
 
 ### 2. Set up environment
@@ -36,7 +36,7 @@ docker run --name drivescore-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d po
 ### 4. Run the API
 
 ```bash
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 API docs at `http://localhost:8000/docs`.
@@ -44,13 +44,13 @@ API docs at `http://localhost:8000/docs`.
 ### 5. Seed demo data
 
 ```bash
-python3 scripts/seed.py
+uv run python scripts/seed.py
 ```
 
 ### 6. Export OpenAPI contract
 
 ```bash
-python3 scripts/export_openapi.py
+uv run python scripts/export_openapi.py
 ```
 
 ## Data flow
@@ -150,7 +150,7 @@ If loading fails or the model returns invalid values, the API fails loudly.
 ## Testing
 
 ```bash
-python3 -m pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 ## Project structure
@@ -183,5 +183,6 @@ backend/
 ├── contract/
 │   └── openapi.json      # Exported API contract
 ├── .env.example
-└── requirements.txt
+├── pyproject.toml        # Dependencies and tool config (uv)
+└── uv.lock
 ```
