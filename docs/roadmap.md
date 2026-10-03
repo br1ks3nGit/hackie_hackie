@@ -36,17 +36,17 @@ Open (the director escalates these when the increment needs them):
 - [x] A6 Pydantic v2 validators (`field_validator`, `min_length`, `model_dump`) and timezone-aware
       timestamps (`datetime.now(UTC)`, `timestamptz` revision); drop the DTZ ignores and the ty
       `deprecated` downgrade.
-- [ ] A7 Size limits: split `app/pipeline.py` and `app/routers/reports.py` under 500 lines and
+- [x] A7 Size limits: split `app/pipeline.py` and `app/routers/reports.py` under 500 lines and
       `process_trip` under 100 lines, no behavior change.
 - [x] A8 Typed models: `Mapped[...]` / `mapped_column` so ty's `invalid-argument-type` and
       `invalid-assignment` rules go back to error.
 - [x] A9 FK indexes: `index=True` on `trips.driver_id`, `events.trip_id`, `incidents.driver_id`,
-      `incidents.trip_id`, `consents.driver_id` + revision 0002 (keeps the drift test green).
+      `incidents.trip_id`, `consents.driver_id` + revision 0004 (keeps the drift test green).
 - [x] A10 Readable schema: `Literal` types for status/tier/type fields, `Field(description, examples)`
       on every API schema, typed models instead of bare dicts, a `TripFeatures` Pydantic model for
       the pipeline/model contract, table docstrings and column comments, `docs/data-model.md` with
       a Mermaid ER diagram and allowed values.
-- [ ] A11 Small cleanups: single `score_to_tier` (drop the copy in `reports.py`), mobile
+- [ ] A11 Small cleanups (single `score_to_tier` done in A7): mobile
       `client.ts` types match the API (`TripListItem` fields), remove legacy `mobile/src/types.ts`
       types and unused deps, `backend/.env.example` on Postgres (user edit: file is agent-denied).
 

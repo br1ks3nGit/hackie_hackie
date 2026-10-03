@@ -62,14 +62,14 @@ def _load_transit_lines() -> list[dict[str, Any]]:
 
 
 def _point_to_segment_distance_m(
-    px: float,
-    py: float,
-    ax: float,
-    ay: float,
-    bx: float,
-    by: float,
+    p: tuple[float, float],
+    a: tuple[float, float],
+    b: tuple[float, float],
 ) -> float:
-    """Distance from point (px,py) to segment (ax,ay)-(bx,by) in meters."""
+    """Distance from point p=(x,y) to segment a-b in meters."""
+    px, py = p
+    ax, ay = a
+    bx, by = b
     # Convert to approximate local coordinates (good enough for 30m checks in HK)
     lat_center = (ay + by) / 2
     m_per_deg_lat = 111320.0
@@ -102,7 +102,7 @@ def _min_distance_to_line(lat: float, lon: float, line_coords: list[list[float]]
     for i in range(len(line_coords) - 1):
         ax, ay = line_coords[i]
         bx, by = line_coords[i + 1]
-        dist = _point_to_segment_distance_m(lon, lat, ax, ay, bx, by)
+        dist = _point_to_segment_distance_m((lon, lat), (ax, ay), (bx, by))
         min_dist = min(min_dist, dist)
     return min_dist
 

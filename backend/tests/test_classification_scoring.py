@@ -115,7 +115,7 @@ def test_label_trip_as_driver_adds_to_score():
 
     # While the trip is still processing, the label is stored and picked up by
     # that run; no second pipeline run is scheduled
-    with unittest.mock.patch("app.routers.reports.BackgroundTasks.add_task") as mock_add_task:
+    with unittest.mock.patch("app.routers.driver.BackgroundTasks.add_task") as mock_add_task:
         response = client.post(
             f"/v1/me/trips/{trip_id}/label",
             headers={"X-API-Key": api_key},
@@ -133,7 +133,7 @@ def test_label_trip_as_driver_adds_to_score():
     db.close()
 
     # Labelling an unscored, finished trip as driver schedules processing
-    with unittest.mock.patch("app.routers.reports.BackgroundTasks.add_task") as mock_add_task:
+    with unittest.mock.patch("app.routers.driver.BackgroundTasks.add_task") as mock_add_task:
         response = client.post(
             f"/v1/me/trips/{trip_id}/label",
             headers={"X-API-Key": api_key},
