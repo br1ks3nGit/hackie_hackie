@@ -527,6 +527,48 @@
         }
       }
     },
+    "/v1/me": {
+      "delete": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Delete My Data",
+        "operationId": "delete_my_data_v1_me_delete",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteDriverResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/insurer/overview": {
       "get": {
         "tags": [
@@ -890,48 +932,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReprocessResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/me": {
-      "delete": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Delete My Data",
-        "operationId": "delete_my_data_v1_me_delete",
-        "parameters": [
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeleteDriverResponse"
                 }
               }
             }
