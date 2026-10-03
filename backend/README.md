@@ -23,15 +23,18 @@ cp .env.example .env
 # Edit .env with your database URL and API keys
 ```
 
-### 3. Start PostgreSQL
+### 3. Start PostgreSQL and migrate
 
 ```bash
-# Option A: Local PostgreSQL
-createdb drivescore
-
-# Option B: Docker
-docker run --name drivescore-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:15
+docker compose up -d db        # from the repo root; also creates drivescore_test
+uv run alembic upgrade head    # the app does not create tables itself
 ```
+
+`initdb.sql` only runs on an empty volume; with an existing volume run `docker compose exec db createdb -U drivescore drivescore_test` (or `docker compose down -v` to reset).
+
+Schema changes go through Alembic: edit `app/models.py`, then
+`uv run alembic revision --autogenerate -m "describe change"`, review the generated file in
+`migrations/versions/`, and run `uv run alembic upgrade head`. Never edit an applied revision.
 
 ### 4. Run the API
 
@@ -145,9 +148,15 @@ If loading fails or the model returns invalid values, the API fails loudly.
 - Night driving = 23:00-05:00 local time
 - Speeding threshold = 50 km/h (fixed HK urban default; one event per run > 10 s)
 - Events are detected with fixed thresholds in `app/pipeline.py`
-- PostgreSQL is used in production; SQLite can be used for local testing
+- PostgreSQL (sync SQLAlchemy + psycopg 3) everywhere; schema is managed by Alembic
 
 ## Testing
+
+Tests run against the `drivescore_test` database (`TEST_DATABASE_URL`, default
+`postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore_test`). Start it with
+`docker compose up -d db`. `conftest.py` runs `alembic upgrade head` once per session, truncates
+all tables before each test and points `DATA_DIR` at a temp dir. `tests/test_migrations.py` fails
+if the models drift from the migrations.
 
 ```bash
 uv run pytest tests/ -v
@@ -172,6 +181,9 @@ backend/
 │       ├── ingestion.py  # Trip upload endpoints
 │       ├── reports.py    # Driver and insurer reports
 │       └── admin.py      # Reprocess and delete
+├── migrations/           # Alembic env + versions
+├── docker/               # DB init script (creates drivescore_test)
+├── alembic.ini
 ├── scripts/
 │   ├── simulate.py       # Generate synthetic trips
 │   ├── seed.py           # Seed demo drivers

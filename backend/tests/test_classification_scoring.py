@@ -1,45 +1,14 @@
-import os
 import unittest.mock
 from datetime import datetime
 
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.config import get_settings
-from app.database import Base, get_db
+from app.database import SessionLocal
 from app.main import app
 from app.models import Trip
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_classify.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-@pytest.fixture(autouse=True)
-def db_override():
-    app.dependency_overrides[get_db] = override_get_db
-    Base.metadata.create_all(bind=engine)
-    yield
-    app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=engine)
-
-
 client = TestClient(app)
-
-
-def teardown_module():
-    if os.path.exists("./test_classify.db"):
-        os.remove("./test_classify.db")
 
 
 def _register_and_consent():
@@ -154,9 +123,8 @@ def test_label_trip_as_driver_adds_to_score():
         assert response.status_code == 200
         mock_add_task.assert_not_called()
 
-    # The pipeline runs against the default DB, not the test DB, so mark the
-    # trip as finished-without-score by hand
-    db = TestingSessionLocal()
+    # Force the status to "done" so the trip counts as finished without a score
+    db = SessionLocal()
     trip = db.query(Trip).filter(Trip.id == trip_id).first()
     trip.status = "done"
     db.commit()

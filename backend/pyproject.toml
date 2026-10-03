@@ -15,6 +15,7 @@ dependencies = [
     "pandas==2.2.3",
     "scipy==1.13.1",
     "requests==2.32.5",
+    "psycopg[binary]>=3.3.6",
 ]
 
 [dependency-groups]
