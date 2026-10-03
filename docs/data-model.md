@@ -195,6 +195,21 @@ Purpose: detected or reported crashes.
 | sensor_snapshot | json | yes | peak_g, imu_samples, duration_ms around the crash. |
 | created_at | timestamptz | no | Row creation time. |
 
+## Indexes
+
+Foreign-key indexes (default names `ix_<table>_<column>`), added in migration 0004:
+
+| Index | Column |
+|---|---|
+| ix_trips_driver_id | trips.driver_id |
+| ix_events_trip_id | events.trip_id |
+| ix_incidents_driver_id | incidents.driver_id |
+| ix_incidents_trip_id | incidents.trip_id |
+| ix_consents_driver_id | consents.driver_id |
+
+No extra index on `trip_chunks.trip_id` (leading column of `uq_trip_chunk`) or on
+`trip_features.trip_id` / `trip_scores.trip_id` (unique).
+
 ## Allowed values
 
 | Field | Values | Meaning / where set |
