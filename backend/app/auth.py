@@ -1,35 +1,25 @@
-import hashlib
-import hmac
-import secrets
-
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
 from app.database import get_db
 from app.models import Driver
-
-settings = get_settings()
-
-
-def hash_api_key(api_key: str) -> str:
-    salted = f"{settings.driver_api_key_salt}:{api_key}"
-    return hashlib.sha256(salted.encode()).hexdigest()
+from app.services.api_keys import find_active_key, generate_key, hash_key
 
 
-def verify_api_key(api_key: str, hashed: str) -> bool:
-    return hmac.compare_digest(hash_api_key(api_key), hashed)
+def hash_api_key(db: Session, api_key: str) -> str:
+    """Salted hash of a driver API key; the salt is generated and stored in Postgres."""
+    return hash_key(db, api_key)
 
 
 def generate_api_key() -> str:
-    return secrets.token_urlsafe(32)
+    return generate_key()
 
 
 def get_current_driver(
     x_api_key: str = Header(...),
     db: Session = Depends(get_db),
 ) -> Driver:
-    driver = db.query(Driver).filter(Driver.api_key_hash == hash_api_key(x_api_key)).first()
+    driver = db.query(Driver).filter(Driver.api_key_hash == hash_api_key(db, x_api_key)).first()
     if not driver:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return driver
@@ -37,6 +27,8 @@ def get_current_driver(
 
 def get_current_insurer(
     x_api_key: str = Header(...),
+    db: Session = Depends(get_db),
 ) -> None:
-    if not hmac.compare_digest(x_api_key, settings.insurer_api_key):
+    """Insurer endpoints accept any unrevoked key made on the dashboard's API keys screen."""
+    if find_active_key(db, x_api_key) is None:
         raise HTTPException(status_code=401, detail="Invalid insurer API key")

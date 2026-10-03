@@ -4,10 +4,10 @@ from datetime import UTC, datetime
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
 from app.database import SessionLocal
 from app.main import app
 from app.models import Incident, Trip
+from tests.helpers import insurer_headers
 
 client = TestClient(app)
 
@@ -310,10 +310,9 @@ def test_insurer_detail_includes_passenger_share():
         json={"trip_type": "passenger"},
     )
 
-    settings = get_settings()
     response = client.get(
         f"/v1/insurer/drivers/{driver_id}",
-        headers={"X-API-Key": settings.insurer_api_key},
+        headers=insurer_headers(),
     )
     assert response.status_code == 200
     data = response.json()

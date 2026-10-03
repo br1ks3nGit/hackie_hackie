@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "components/button.html" import button %}
+{% from "components/field.html" import field %}
+{% from "components/flash.html" import flash %}
+{% block title %}Users - DriveScore Insurer{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-text">Users</h1>
+<p class="text-sm text-text-muted">Staff who can sign in to this dashboard. Stored in Postgres; passwords are hashed.</p>
+{% if notice %}<div class="mt-4">{{ flash(notice.kind, notice.message) }}</div>{% endif %}
+<div class="mt-4 overflow-x-auto rounded-lg border border-border bg-surface" tabindex="0" role="region" aria-label="Users">
+  <table class="w-full min-w-max text-sm text-left">
+    <caption class="sr-only">Dashboard users with status, creation and last login time</caption>
+    <thead class="bg-surface-muted text-text-muted font-medium">
+      <tr>
+        <th scope="col" class="px-4 py-3">Username</th>
+        <th scope="col" class="px-4 py-3">Status</th>
+        <th scope="col" class="px-4 py-3">Created</th>
+        <th scope="col" class="px-4 py-3">Last login</th>
+        <th scope="col" class="px-4 py-3">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr class="hover:bg-surface-muted align-top">
+        <th scope="row" class="px-4 py-3 border-t border-border text-left font-mono font-normal">{{ u.username }}{% if u.id == current_id %} <span class="text-text-muted">(you)</span>{% endif %}</th>
+        <td class="px-4 py-3 border-t border-border font-medium">{{ "Active" if u.is_active else "Inactive" }}</td>
+        <td class="px-4 py-3 border-t border-border">{{ u.created_at|hk_time }}</td>
+        <td class="px-4 py-3 border-t border-border">{{ u.last_login_at|hk_time }}</td>
+        <td class="px-4 py-3 border-t border-border">
+          <div class="flex flex-wrap items-start gap-3">
+            <form method="post" action="/dashboard/users/{{ u.id }}/password" class="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="password" name="password" class="input" required minlength="{{ min_password_len }}" autocomplete="new-password" aria-label="New password for {{ u.username }}" placeholder="New password">
+              <input type="password" name="password_confirm" class="input" required minlength="{{ min_password_len }}" autocomplete="new-password" aria-label="Repeat new password for {{ u.username }}" placeholder="Repeat">
+              {{ button("Change password", type="submit", variant="secondary", size="sm") }}
+            </form>
+            <form method="post" action="/dashboard/users/{{ u.id }}/active">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="active" value="{{ 'false' if u.is_active else 'true' }}">
+              {{ button("Deactivate" if u.is_active else "Activate", type="submit", variant="danger" if u.is_active else "secondary", size="sm") }}
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="px-4 py-12 text-center border-t border-border">
+          <p class="text-lg font-semibold text-text">No users yet</p>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 class="mt-8 text-xl font-semibold text-text">Add user</h2>
+<form method="post" action="/dashboard/users" class="card mt-2 flex flex-col gap-4 max-w-md">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if error %}{{ flash("error", error, id="user-error") }}{% endif %}
+  {{ field("username", "Username", value=form_username, required=true, autocomplete="username", hint="Letters, digits, '.', '_' and '-'.", describedby="user-error" if error, invalid=error) }}
+  {{ field("password", "Password", type="password", required=true, autocomplete="new-password", hint="At least " ~ min_password_len ~ " characters.") }}
+  {{ field("password_confirm", "Repeat password", type="password", required=true, autocomplete="new-password") }}
+  {{ button("Add user", type="submit") }}
+</form>
+{% endblock %}

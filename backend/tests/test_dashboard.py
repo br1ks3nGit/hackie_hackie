@@ -5,15 +5,15 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import Settings, get_settings
+from app.config import Settings
 from app.database import SessionLocal
 from app.main import app
 from app.model import tier_to_multiplier
-from app.models import Driver, Trip, TripFeature, TripScore
+from app.models import Driver, Trip, TripFeature, TripScore, User
 from app.services.passwords import hash_password, verify_password
+from tests.helpers import ADMIN_PASSWORD, create_admin, insurer_headers
 
-PASSWORD = "correct horse battery staple"
-PASSWORD_HASH = hash_password(PASSWORD)
+PASSWORD = ADMIN_PASSWORD
 
 
 @pytest.fixture
@@ -22,9 +22,8 @@ def client() -> TestClient:
 
 
 @pytest.fixture(autouse=True)
-def configured_login(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(get_settings(), "dashboard_password_hash", PASSWORD_HASH)
-    monkeypatch.setattr(get_settings(), "dashboard_username", "admin")
+def configured_login() -> None:
+    create_admin()
 
 
 def csrf_from(html: str) -> str:
@@ -131,13 +130,13 @@ def test_logout_clears_session(client: TestClient) -> None:
     assert client.get("/dashboard").status_code == 303
 
 
-def test_unconfigured_hash_shows_clear_message(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(get_settings(), "dashboard_password_hash", None)
+def test_login_with_no_users_is_rejected(client: TestClient) -> None:
+    with SessionLocal() as db:
+        db.query(User).delete()
+        db.commit()
     response = login(client)
     assert response.status_code == 401
-    assert "Dashboard login is not configured" in response.text
+    assert "Invalid username or password" in response.text
 
 
 def test_dashboard_routes_are_not_in_openapi(client: TestClient) -> None:
@@ -166,12 +165,16 @@ def test_malformed_hash_never_verifies(stored: str) -> None:
     assert not verify_password("anything", stored)
 
 
-def test_settings_default_username_and_unset_hash() -> None:
+def test_settings_ignore_legacy_credentials_now_stored_in_postgres() -> None:
     settings = Settings(
-        insurer_api_key="k", driver_api_key_salt="s", session_secret="s" * 32, _env_file=None
+        session_secret="s" * 32,
+        insurer_api_key="k",
+        driver_api_key_salt="s",
+        dashboard_password_hash="x",
+        _env_file=None,
     )
-    assert settings.dashboard_username == "admin"
-    assert settings.dashboard_password_hash is None
+    assert not hasattr(settings, "insurer_api_key")
+    assert not hasattr(settings, "dashboard_password_hash")
     assert settings.session_https_only is False
 
 
@@ -230,9 +233,7 @@ def test_overview_renders_seeded_numbers(client: TestClient, seeded_overview: No
 
 def test_json_overview_seeded(seeded_overview: None) -> None:
     api = TestClient(app)
-    response = api.get(
-        "/v1/insurer/overview", headers={"X-API-Key": get_settings().insurer_api_key}
-    )
+    response = api.get("/v1/insurer/overview", headers=insurer_headers())
     assert response.status_code == 200
     assert response.json() == {
         "total_drivers": 2,

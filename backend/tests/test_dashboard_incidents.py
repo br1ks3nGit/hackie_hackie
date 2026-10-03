@@ -5,11 +5,11 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
 from app.database import SessionLocal
 from app.main import app
 from app.models import Driver, Incident, Trip
-from tests.test_dashboard import PASSWORD_HASH, login
+from tests.helpers import create_admin
+from tests.test_dashboard import login
 
 BASE = datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
 
@@ -20,9 +20,8 @@ def client() -> TestClient:
 
 
 @pytest.fixture(autouse=True)
-def configured_login(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(get_settings(), "dashboard_password_hash", PASSWORD_HASH)
-    monkeypatch.setattr(get_settings(), "dashboard_username", "admin")
+def configured_login() -> None:
+    create_admin()
 
 
 def _seed(rows: list[dict[str, Any]]) -> None:

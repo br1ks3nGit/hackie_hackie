@@ -169,9 +169,12 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 Needs Docker only (no local Python).
 
 ```bash
-# from the repo root; compose refuses to start `api` if either key is unset
-export INSURER_API_KEY=change-me DRIVER_API_KEY_SALT=change-me-too   # or put both in a root .env
+# from the repo root; compose refuses to start `api` if SESSION_SECRET is unset
+export SESSION_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))")   # or put it in a root .env
 docker compose up -d --build
+
+# create the first dashboard user (prompts for a password), then sign in at /dashboard
+docker compose exec api python scripts/manage_users.py create admin
 
 # demo data (the script targets http://localhost:8000, valid inside the container)
 docker compose exec api python scripts/seed.py
@@ -194,7 +197,7 @@ docker compose up -d db
 cd backend
 uv sync
 cp .env.example .env
-#   edit .env: set INSURER_API_KEY and DRIVER_API_KEY_SALT (see table below), and set
+#   edit .env: set SESSION_SECRET (see table below), and set
 #   DATABASE_URL=postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore
 #   TEST_DATABASE_URL=postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore_test
 #   (backend/.env.example is still on SQLite: replace the DATABASE_URL line and add the
@@ -202,6 +205,9 @@ cp .env.example .env
 
 # 3. Create the schema (the app does not create tables itself)
 uv run alembic upgrade head
+
+#    ...and the first dashboard user (prompts for a password)
+uv run python scripts/manage_users.py create admin
 
 # 4. Run the API
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -219,11 +225,7 @@ to reset everything).
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `INSURER_API_KEY` | none, **required** | Shared secret for insurer endpoints and reprocess. The app will not start without it. |
-| `DRIVER_API_KEY_SALT` | none, **required** | Salt for hashing driver API keys (SHA-256). Changing it invalidates all existing driver keys. |
 | `SESSION_SECRET` | none, **required** | Signs the dashboard session cookie. The app will not start without it. |
-| `DASHBOARD_USERNAME` | `admin` | Insurer dashboard staff username. |
-| `DASHBOARD_PASSWORD_HASH` | unset | `scrypt:<n>:<r>:<p>:<salt_hex>:<hash_hex>` from `scripts/hash_password.py`. Unset means dashboard login is disabled (the login page says so). |
 | `SESSION_HTTPS_ONLY` | `false` | Set `true` behind HTTPS so the session cookie is `Secure`. |
 | `DATABASE_URL` | `postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore` | SQLAlchemy URL of the main database. |
 | `TEST_DATABASE_URL` | unset | Database used by pytest; its name must end in `_test`. |
@@ -237,20 +239,24 @@ to reset everything).
 ### Insurer dashboard
 
 Staff-only HTML dashboard at `http://localhost:8000/dashboard` (Jinja2 + HTMX + Alpine.js + UnoCSS,
-no JSON API calls). One staff user; session cookie (8 h, SameSite=Lax) plus per-session CSRF token.
-Not part of the OpenAPI contract.
+no JSON API calls). Staff users are rows in the Postgres `users` table (passwords stored as scrypt
+hashes); session cookie (8 h, SameSite=Lax) plus per-session CSRF token. Not part of the OpenAPI
+contract.
 
 ```bash
-# from backend/: create the password hash (prompts; or --generate for a random password)
-uv run python scripts/hash_password.py
-# put the printed line in .env (docker compose reads it from the repo-root .env):
-#   DASHBOARD_PASSWORD_HASH=scrypt:32768:8:1:<salt>:<hash>
+# from backend/: create the first user (prompts for a password; --generate makes a random one)
+uv run python scripts/manage_users.py create admin
+uv run python scripts/manage_users.py set-password admin
+# in docker compose: docker compose exec api python scripts/manage_users.py create admin
+#
+# the only value kept in .env (docker compose reads it from the repo-root .env):
 #   SESSION_SECRET=<long random string, e.g. python -c "import secrets; print(secrets.token_urlsafe(48))">
-#   DASHBOARD_USERNAME=admin        # optional
 ```
 
-The hash contains no `$`, so docker compose does not interpolate it. Restart the API after changing
-it. Rebuild the stylesheet after editing templates or `backend/uno.config.ts` (Node needed only for
+Once signed in, the **Users** screen adds users, changes passwords and deactivates users (a
+deactivated user's session ends at once; the last active user cannot be deactivated). The
+**API keys** screen generates and revokes insurer API keys. A new key is shown once and only its
+salted hash is stored. Rebuild the stylesheet after editing templates or `backend/uno.config.ts` (Node needed only for
 this; the generated `app/static/css/uno.css` is committed):
 
 ```bash
@@ -311,11 +317,12 @@ Both scripts (both included in the API image) talk to `http://localhost:8000/v1`
 `car_connected=true`, so trips classify as driver trips and are scored immediately. The
 synthetic profiles are `calm`, `moderate` and `aggressive`.
 
-Try the reports (replace the key with your `INSURER_API_KEY`):
+Try the reports (generate a key on the dashboard's **API keys** screen first):
 
 ```bash
-curl -H "X-API-Key: change-me-insurer-key" http://localhost:8000/v1/insurer/overview
-curl -H "X-API-Key: change-me-insurer-key" "http://localhost:8000/v1/insurer/drivers?sort=score_asc"
+export INSURER_KEY=dsk_...   # the key shown once after "Generate key"
+curl -H "X-API-Key: $INSURER_KEY" http://localhost:8000/v1/insurer/overview
+curl -H "X-API-Key: $INSURER_KEY" "http://localhost:8000/v1/insurer/drivers?sort=score_asc"
 ```
 
 ### Export the API contract
@@ -390,7 +397,12 @@ contract in `backend/contract/openapi.json`.
   once. Only a salted SHA-256 hash is stored. POC identity rule: **one device = one driver**;
   each install registers once and keeps its key. There is no login, logout or separate
   device model.
-- **Insurer key.** A single shared secret from `INSURER_API_KEY`, compared in constant time.
+- **Salt.** The salt for those hashes is generated by the server on first use and stored in the
+  `app_settings` table (not in `.env`). Changing it would invalidate every driver key, so there
+  is no screen to rotate it.
+- **Insurer keys.** Rows in the `api_keys` table, generated and revoked on the dashboard's API
+  keys screen (shown once, stored as a salted hash, `last_used_at` tracked). Any unrevoked key
+  is accepted on the insurer and reprocess endpoints.
 - Every `/v1/me/...` and trip route is scoped to the authenticated driver (other drivers' trip
   ids return 404).
 

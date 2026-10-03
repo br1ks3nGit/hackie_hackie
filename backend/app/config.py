@@ -7,17 +7,15 @@ MIN_SESSION_SECRET_LEN = 32
 
 
 class Settings(BaseSettings):
+    # extra="ignore": an old .env that still sets INSURER_API_KEY, DRIVER_API_KEY_SALT or
+    # DASHBOARD_* (now stored in Postgres) must not stop the app from starting.
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", protected_namespaces=()
+        env_file=".env", env_file_encoding="utf-8", protected_namespaces=(), extra="ignore"
     )
 
     database_url: str = "postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore"
     test_database_url: str | None = None
-    insurer_api_key: str  # required, no default — set via env or .env
-    driver_api_key_salt: str  # required, no default — set via env or .env
     session_secret: str  # required, no default - signs dashboard session cookies
-    dashboard_username: str = "admin"
-    dashboard_password_hash: str | None = None  # scrypt:<n>:<r>:<p>:<salt_hex>:<hash_hex>
     session_https_only: bool = False
     cors_origins: str = "http://localhost:3000,http://localhost:19006"
     data_dir: str = "./data/raw"

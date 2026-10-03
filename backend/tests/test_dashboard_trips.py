@@ -4,11 +4,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
 from app.database import SessionLocal
 from app.main import app
 from app.models import Driver, Event, Incident, Trip, TripFeature, TripScore
-from tests.test_dashboard import PASSWORD_HASH, login
+from tests.helpers import create_admin
+from tests.test_dashboard import login
 
 START = datetime(2026, 1, 1, 2, 0, tzinfo=UTC)  # 10:00 HKT
 
@@ -19,9 +19,8 @@ def client() -> TestClient:
 
 
 @pytest.fixture(autouse=True)
-def configured_login(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(get_settings(), "dashboard_password_hash", PASSWORD_HASH)
-    monkeypatch.setattr(get_settings(), "dashboard_username", "admin")
+def configured_login() -> None:
+    create_admin()
 
 
 def _seed(trip_id: str, with_events: bool) -> None:

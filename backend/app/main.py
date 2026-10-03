@@ -13,9 +13,11 @@ from app.model import load_model
 from app.routers import (
     admin,
     dashboard,
+    dashboard_api_keys,
     dashboard_drivers,
     dashboard_incidents,
     dashboard_trips,
+    dashboard_users,
     driver,
     incidents,
     ingestion,
@@ -82,6 +84,8 @@ app.include_router(dashboard.router)
 app.include_router(dashboard_drivers.router)
 app.include_router(dashboard_incidents.router)
 app.include_router(dashboard_trips.router)
+app.include_router(dashboard_users.router)
+app.include_router(dashboard_api_keys.router)
 
 
 @app.get("/health")

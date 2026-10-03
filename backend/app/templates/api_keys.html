@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "components/button.html" import button %}
+{% from "components/field.html" import field %}
+{% from "components/flash.html" import flash %}
+{% block title %}API keys - DriveScore Insurer{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-text">API keys</h1>
+<p class="text-sm text-text-muted">Insurer keys for the <code class="font-mono">/v1/insurer/*</code> endpoints and trip reprocessing. Send one as the <code class="font-mono">X-API-Key</code> header. Only a hash is stored.</p>
+{% if notice %}<div class="mt-4">{{ flash(notice.kind, notice.message) }}</div>{% endif %}
+{% if new_key %}
+<div class="card mt-4 flex flex-col gap-2" role="status">
+  <p class="font-semibold text-text">Key "{{ new_name }}" created. Copy it now; it is not shown again.</p>
+  <code id="new-key" class="font-mono break-all select-all rounded-md bg-surface-muted p-3">{{ new_key }}</code>
+</div>
+{% endif %}
+<div class="mt-4 overflow-x-auto rounded-lg border border-border bg-surface" tabindex="0" role="region" aria-label="API keys">
+  <table class="w-full min-w-max text-sm text-left">
+    <caption class="sr-only">Insurer API keys with owner, creation, last use and status</caption>
+    <thead class="bg-surface-muted text-text-muted font-medium">
+      <tr>
+        <th scope="col" class="px-4 py-3">Name</th>
+        <th scope="col" class="px-4 py-3">Key</th>
+        <th scope="col" class="px-4 py-3">Created by</th>
+        <th scope="col" class="px-4 py-3">Created</th>
+        <th scope="col" class="px-4 py-3">Last used</th>
+        <th scope="col" class="px-4 py-3">Status</th>
+        <th scope="col" class="px-4 py-3">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in keys %}
+      {% set k = row.key %}
+      <tr class="hover:bg-surface-muted">
+        <th scope="row" class="px-4 py-3 border-t border-border text-left font-normal">{{ k.name }}</th>
+        <td class="px-4 py-3 border-t border-border font-mono">{{ k.key_prefix }}&hellip;</td>
+        <td class="px-4 py-3 border-t border-border">{{ row.created_by or "-" }}</td>
+        <td class="px-4 py-3 border-t border-border">{{ k.created_at|hk_time }}</td>
+        <td class="px-4 py-3 border-t border-border">{{ k.last_used_at|hk_time }}</td>
+        <td class="px-4 py-3 border-t border-border font-medium">{{ "Revoked" if k.revoked_at else "Active" }}</td>
+        <td class="px-4 py-3 border-t border-border">
+          {% if not k.revoked_at %}
+          <form method="post" action="/dashboard/api-keys/{{ k.id }}/revoke" onsubmit="return confirm('Revoke this key? Anything using it will stop working.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            {{ button("Revoke", type="submit", variant="danger", size="sm") }}
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="px-4 py-12 text-center border-t border-border">
+          <p class="text-lg font-semibold text-text">No API keys yet</p>
+          <p class="text-sm text-text-muted">Generate one below to call the insurer endpoints.</p>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 class="mt-8 text-xl font-semibold text-text">Generate key</h2>
+<form method="post" action="/dashboard/api-keys" class="card mt-2 flex flex-col gap-4 max-w-md">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if error %}{{ flash("error", error, id="key-error") }}{% endif %}
+  {{ field("name", "Name", required=true, hint="What this key is for, e.g. Reporting export.", describedby="key-error" if error, invalid=error) }}
+  {{ button("Generate key", type="submit") }}
+</form>
+
+<h2 class="mt-8 text-xl font-semibold text-text">Driver key salt</h2>
+<div class="card mt-2 max-w-md">
+  <p class="text-sm text-text">Generated automatically{% if salt_created_at %} on {{ salt_created_at|hk_time }}{% endif %} and stored in Postgres. It is used to hash driver and insurer keys and is never shown.</p>
+  <p class="mt-2 text-sm text-text-muted">There is no rotate button: changing the salt would invalidate every registered driver's key.</p>
+</div>
+{% endblock %}
