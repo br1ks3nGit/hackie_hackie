@@ -29,9 +29,9 @@ app; the insurer sees drivers by anonymous id with tier, multiplier and event ra
 protected attributes (age, gender, etc.) are used, and a driver can delete all their data.
 
 Status: the backend API, pipeline, classification, scoring and a minimal mobile app work end
-to end against synthetic and real sensor data. The insurer web dashboard and a Dockerised API
-are planned but not built yet (see [Roadmap](#13-roadmap)); today the insurer views are API
-endpoints only.
+to end against synthetic and real sensor data. The whole stack (API + PostgreSQL) runs with
+`docker compose up`. The insurer web dashboard is planned but not built yet (see
+[Roadmap](#13-roadmap)); today the insurer views are API endpoints only.
 
 ## 2. How it works
 
@@ -88,10 +88,11 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 ```
 .
 |-- README.md                    this file (main entry point)
-|-- docker-compose.yml           PostgreSQL 16 (db service only for now); creates drivescore_test
+|-- docker-compose.yml           services: db (PostgreSQL 16, creates drivescore_test) and api
 |-- .github/workflows/ci.yml     CI: ruff format/check, ty, pytest on Postgres
 |-- docs/
 |   |-- roadmap.md               phased plan, one line = one small PR
+|   |-- data-model.md            detailed data model: ER diagram, tables, allowed values
 |   `-- handoff.md               older team handoff guide (stale, see limitations)
 |-- contracts/                   older hand-written API contract (stale, replaced by OpenAPI)
 |-- backend/                     FastAPI service (see backend/README.md)
@@ -99,8 +100,10 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 |   |   |-- main.py              app, CORS, router mounting, /health, model load on startup
 |   |   |-- config.py            pydantic-settings; all env variables
 |   |   |-- database.py          sync SQLAlchemy engine and session
-|   |   |-- models.py            8 ORM tables
-|   |   |-- schemas.py           Pydantic request / response models
+|   |   |-- models.py            8 typed ORM tables (Mapped), with column comments
+|   |   |-- values.py            Literal types for allowed values (status, tier, ...)
+|   |   |-- schemas.py           API contract: Pydantic models with field docs (see /docs)
+|   |   |-- features.py          TripFeatures: feature contract with the model team
 |   |   |-- auth.py              API key hashing, driver and insurer dependencies
 |   |   |-- pipeline.py          quality checks, signal processing, events, crash, features
 |   |   |-- classify.py          transit / driver / unknown classification
@@ -109,12 +112,14 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 |   |       |-- ingestion.py     register, consent, trip start / chunks / end / status
 |   |       |-- reports.py       driver and insurer reports, labelling, incidents
 |   |       `-- admin.py         reprocess a trip, delete my data
-|   |-- migrations/              Alembic env + versions/0001_baseline.py
+|   |-- Dockerfile               API image (uv, non-root user)
+|   |-- migrations/              Alembic env + versions/ (0001, 0002, 0003)
 |   |-- scripts/                 seed.py, simulate.py, export_openapi.py
 |   |-- data/transit_lines.geojson   HK transit lines for classification
 |   |-- data/raw/                raw sensor chunks at runtime (gitignored)
 |   |-- contract/openapi.json    exported OpenAPI contract (+ examples/)
 |   |-- docker/initdb.sql        creates the drivescore_test database on first start
+|   |-- docker/entrypoint.sh     API container start: alembic upgrade head, then uvicorn
 |   |-- tests/                   pytest suite (Postgres)
 |   |-- conftest.py              test DB safety check, migrations, per-test truncate
 |   |-- pyproject.toml, uv.lock  dependencies and tool config (uv)
@@ -160,10 +165,30 @@ screen.
 - Docker (for PostgreSQL)
 - Node.js and npm (mobile app only), and Expo Go or a simulator
 
-### Backend
+### Option A: everything in Docker
+
+Needs Docker only (no local Python).
 
 ```bash
-# 1. PostgreSQL (from the repo root); also creates the drivescore_test database
+# from the repo root; compose refuses to start `api` if either key is unset
+export INSURER_API_KEY=change-me DRIVER_API_KEY_SALT=change-me-too   # or put both in a root .env
+docker compose up -d --build
+
+# demo data (the script targets http://localhost:8000, valid inside the container)
+docker compose exec api python scripts/seed.py
+```
+
+The `api` container waits for a healthy `db`, runs `alembic upgrade head` (see
+`backend/docker/entrypoint.sh`), then serves on `0.0.0.0:8000`. Check it with
+`curl localhost:8000/health` and `docker compose logs api`. Raw chunks live in the `rawdata`
+volume (`/data/raw`); put a trained `model.pkl` in the `models` volume (`/models`), otherwise
+the placeholder rules are used. Phones on the same network reach the API at
+`http://<laptop LAN IP>:8000` (see [Mobile app](#mobile-app)).
+
+### Option B: local dev (compose db + uv)
+
+```bash
+# 1. PostgreSQL only (from the repo root); also creates the drivescore_test database
 docker compose up -d db
 
 # 2. Dependencies and environment
@@ -173,9 +198,8 @@ cp .env.example .env
 #   edit .env: set INSURER_API_KEY and DRIVER_API_KEY_SALT (see table below), and set
 #   DATABASE_URL=postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore
 #   TEST_DATABASE_URL=postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore_test
-#   (replace the sqlite DATABASE_URL line; the commented postgresql:// example in the
-#   template is wrong: wrong credentials and no +psycopg. .env.example is being fixed
-#   separately.)
+#   (backend/.env.example is still on SQLite: replace the DATABASE_URL line and add the
+#   TEST_DATABASE_URL line; the app only works with PostgreSQL.)
 
 # 3. Create the schema (the app does not create tables itself)
 uv run alembic upgrade head
@@ -184,8 +208,8 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Open http://localhost:8000/docs for the interactive API docs and
-http://localhost:8000/health for a liveness check.
+Open http://localhost:8000/docs for the interactive API docs (field descriptions and examples
+come from `app/schemas.py`) and http://localhost:8000/health for a liveness check.
 
 `docker/initdb.sql` only runs on an empty volume. If your Postgres volume already existed,
 create the test database with
@@ -209,7 +233,8 @@ to reset everything).
 
 ### Demo data
 
-With the API running, in another terminal from `backend/`:
+With the API running (Option A: seed with `docker compose exec api python scripts/seed.py`;
+Option B: in another terminal from `backend/`):
 
 ```bash
 # Seed 30 drivers (12 calm, 10 moderate, 8 aggressive), 3 to 8 synthetic trips each.
@@ -221,7 +246,7 @@ uv run python scripts/simulate.py --type calm --count 2
 uv run python scripts/simulate.py --type aggressive --count 3 --api-key <driver api key>
 ```
 
-Both scripts talk to `http://localhost:8000/v1` (hardcoded `BASE_URL`). Simulated chunks set
+Both scripts (both included in the API image) talk to `http://localhost:8000/v1` (hardcoded `BASE_URL`). Simulated chunks set
 `car_connected=true`, so trips classify as driver trips and are scored immediately. The
 synthetic profiles are `calm`, `moderate` and `aggressive`.
 
@@ -253,8 +278,10 @@ stores the id and API key in AsyncStorage, and shows a score plus the last trip.
 **API_BASE is hardcoded.** `mobile/src/api/client.ts` line 1 is
 `const API_BASE = 'http://localhost:8000/v1';`. That works for a simulator on the same
 machine only. On a real phone, change it to your computer's LAN address (for example
-`http://192.168.1.20:8000/v1`), run uvicorn with `--host 0.0.0.0` (as above), and make sure
-both devices are on the same network. A config-driven value is roadmap item E1.
+`http://192.168.1.20:8000/v1`), and make sure both devices are on the same network. The
+API must listen on all interfaces: compose `api` already does (`0.0.0.0:8000`); for local
+uvicorn use `--host 0.0.0.0` as above. The phone reaches the API at
+`http://<laptop LAN IP>:8000`. A config-driven value is roadmap item E1.
 
 ## 6. API overview
 
@@ -295,6 +322,9 @@ contract in `backend/contract/openapi.json`.
 | Insurer | GET | `/v1/insurer/drivers/{driver_id}` | insurer | Driver detail: event counts, last 20 trips, model version, passenger share, `flagged_for_review` |
 | Admin | POST | `/v1/trips/{trip_id}/reprocess` | insurer | Delete events, features, score, incidents of a trip and re-run the pipeline |
 | Admin | DELETE | `/v1/me` | driver | Delete all of the driver's data and raw files (PDPO erasure) |
+
+All datetimes in responses are timezone-aware UTC and end in `Z` (for example
+`2026-01-02T03:04:05Z`). Naive datetimes sent by a client are read as UTC.
 
 Errors use FastAPI's `{"detail": "..."}` shape. 401 wrong key (422 if the `X-API-Key` header is
 missing), 403 consent required, 404 unknown or foreign trip, 400 wrong trip state (for
@@ -421,7 +451,8 @@ Stored per trip in `trip_features.features` (JSON). The model sees only the ten 
 | 10 | `speeding_time_share` | Share of GPS points above 13.9 m/s |
 
 The stored JSON also holds `events_per_100km` (dict) and a downsampled `route` (up to about
-100 points), which are used by the API but are not model inputs.
+100 points), which are used by the API but are not model inputs. The pipeline validates the
+computed features against the `TripFeatures` model in `app/features.py` before storing them.
 
 ## 8. Scoring
 
@@ -471,10 +502,11 @@ The premium uses the driver-level score, never a single trip:
 - **Real model.** If the file at `MODEL_PATH` (default `backend/models/model.pkl`, gitignored)
   exists at startup, it is unpickled once and used with `model_version = "pkl-model"`.
 
-Contract for the model team:
+Contract for the model team: `TripFeatures` in `app/features.py` (field names, units,
+descriptions) and `FEATURE_ORDER` in `app/model.py` (the order of the model input vector).
 
 1. Train on the 10 features in `FEATURE_ORDER`, in that order. Do not reorder or rename them;
-   changing `FEATURE_ORDER` is a coordinated change.
+   changing `FEATURE_ORDER` or a `TripFeatures` field is a coordinated change.
 2. The pickled object must expose `predict_proba(X)` (the probability of column 1, "risky",
    is used) or `predict(X)` returning a value in 0..1. `X` is a list with one row of 10 floats.
 3. It must be loadable in the backend environment (numpy 1.26.4, pandas 2.2.3, scipy 1.13.1;
@@ -489,8 +521,21 @@ Only unpickle files you trust; pickle can execute code.
 
 ## 9. Data model
 
-PostgreSQL, 8 tables, created by Alembic revision `0001_baseline`. Ids are strings such as
-`drv-<12 hex>` and `trp-<12 hex>`.
+PostgreSQL, 8 tables, managed by Alembic. Ids are strings such as `drv-<12 hex>` and
+`trp-<12 hex>`. All timestamps are `timestamptz` (timezone-aware UTC) and DB sessions are
+pinned to UTC.
+
+Detailed reference (ER diagram, every table and column, allowed values, trip lifecycle):
+[docs/data-model.md](docs/data-model.md).
+
+Where things live:
+
+- `backend/app/models.py`: database truth (typed `Mapped` tables, column comments).
+- `backend/app/values.py`: allowed values as `Literal` types, shared by models and schemas.
+- `backend/app/schemas.py`: API contract with field descriptions (browse it at `/docs`,
+  exported to `backend/contract/openapi.json`).
+- `backend/app/features.py`: `TripFeatures`, the contract with the model team.
+- `backend/migrations/`: schema history.
 
 | Table | Key columns | Relations / notes |
 |---|---|---|
@@ -507,6 +552,9 @@ Raw sensor data is not in the database; it lives as gzip JSON files on disk
 (`DATA_DIR/<trip_id>/<seq>.json.gz`), referenced by `trip_chunks.file_path`.
 
 ### Schema changes (Alembic)
+
+Revisions so far: `0001_baseline` (all 8 tables), `0002_timestamptz` (timestamps become
+timezone-aware), `0003_column_comments` (column comments from `app/models.py`).
 
 Never edit an applied revision; add a new one.
 
@@ -599,12 +647,13 @@ This is a hackathon POC. Be aware of the following.
   queue: if the API restarts mid-processing, that trip stays `processing` until reprocessed.
 - Raw chunks are stored on local disk, so only a single API instance works. Multiple
   instances need object storage (roadmap D5).
-- The API is not Dockerised yet; only PostgreSQL runs in `docker-compose.yml` (A5).
+- The API container binds `0.0.0.0:8000` on purpose so phones on the LAN can reach it; there
+  is no TLS or reverse proxy.
 - No insurer web dashboard yet (phase F). Insurer views are API endpoints.
-- Timestamps are naive UTC (`datetime.utcnow`, `DateTime` without time zone). Timezone-aware
-  columns come with A6. Night driving is computed by treating them as UTC and converting to
-  Asia/Hong_Kong.
-- Several Pydantic v1-style `@validator` calls and `.dict()` are still in use (A6).
+- Timestamps are timezone-aware UTC (`timestamptz`; API datetimes end in `Z`). Night driving
+  converts to Asia/Hong_Kong.
+- `backend/.env.example` is still on SQLite; set the PostgreSQL `DATABASE_URL` and
+  `TEST_DATABASE_URL` yourself (see Option B).
 
 **Signal processing**
 - The lateral acceleration uses the gyro `gz` axis as yaw rate, so it assumes the phone's
@@ -649,10 +698,11 @@ This is a hackathon POC. Be aware of the following.
 
 Full plan and status in [docs/roadmap.md](docs/roadmap.md). One line is one small PR.
 
-- Done: A1 uv tooling, A2 lint baseline, A3 CI, A4 PostgreSQL + Alembic, C2 pipeline error
-  path fix.
-- Next (phase A): A5 Docker image and compose for the API, A6 Pydantic v2 and timezone-aware
-  timestamps, A7 split oversized files, A8 typed models, A9 foreign-key indexes.
+- Done: A1 uv tooling, A2 lint baseline, A3 CI, A4 PostgreSQL + Alembic, A5 Docker image and
+  compose for the API, A6 Pydantic v2 and timezone-aware timestamps, A8 typed models, A10
+  readable schema (allowed values, field docs, TripFeatures, data-model.md), C2 pipeline
+  error path fix.
+- Next (phase A): A9 foreign-key indexes, A7 split oversized files, A11 cleanups.
 - Bugs: C1 incident trip ownership check.
 - Mobile (phase E): configurable `API_BASE`, send `car_connected`, optional trip labelling,
   NativeWind.
