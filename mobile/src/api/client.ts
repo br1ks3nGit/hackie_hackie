@@ -13,6 +13,7 @@ export interface TripStartResponse {
 
 export interface TripChunkRequest {
   seq: number;
+  car_connected?: boolean | null;
   imu: Array<{
     t: number;
     ax: number;

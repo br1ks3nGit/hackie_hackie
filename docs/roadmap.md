@@ -56,8 +56,8 @@ Open (the director escalates these when the increment needs them):
 
 ## Phase E - Mobile
 - [x] E1 Config-driven `API_BASE` (Expo config / env) so the app works on a real phone.
-- [ ] E2 Send `car_connected` (Bluetooth) with chunks so real trips score automatically
-      (the simulator already sends it).
+- [x] E2 Send `car_connected` with chunks so real trips score automatically: manual "I'm driving"
+      toggle for now; automatic car-audio detection is H2.
 - [ ] E3 (optional) Label unknown trips (driver / passenger).
 - [ ] E4 NativeWind setup and design tokens.
 
@@ -71,3 +71,12 @@ Open (the director escalates these when the increment needs them):
 
 ## Phase G - Docs
 - [ ] G1 Rewrite `docs/handoff.md` and `contracts/` from the generated OpenAPI contract.
+
+## Phase H - Native signals (post-hackathon)
+- [ ] H1 Expo development build (custom native modules).
+- [ ] H2 Car audio connection sets `car_connected` automatically: iOS audio route
+      (Bluetooth / CarPlay); Android Bluetooth A2DP / Android Auto with `BLUETOOTH_CONNECT`.
+- [ ] H3 OS activity recognition for automatic trip start/stop: Android Activity Recognition
+      Transition API `IN_VEHICLE` (`ACTIVITY_RECOGNITION` permission); iOS
+      `CMMotionActivityManager` automotive (`NSMotionUsageDescription`). It does not
+      distinguish driver from passenger.

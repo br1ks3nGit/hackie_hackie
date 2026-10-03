@@ -279,6 +279,13 @@ npm run ts:check      # TypeScript check
 The app registers a driver on first launch, records consent automatically (version "1.0"),
 stores the id and API key in AsyncStorage, and shows a score plus the last trip.
 
+Turn on the "I'm driving" switch before you drive. While it is on, every uploaded chunk carries
+`car_connected: true`; while it is off, every chunk carries `car_connected: false`. The choice is
+kept in AsyncStorage (`drivescore:driving_mode`) and is read at each chunk, so flipping it
+mid-trip changes the share of "on" chunks from the next chunk. The backend needs more than 80%
+"on" chunks to classify the trip as `driver`; otherwise it is typically `unknown` (transit
+rules still apply) and goes to labelling.
+
 #### Point the app at the backend
 
 The base URL comes from `EXPO_PUBLIC_API_BASE_URL` (default `http://localhost:8000`, which
@@ -681,8 +688,9 @@ This is a hackathon POC. Be aware of the following.
   and fall to `unknown`.
 
 **Mobile**
-- The app does **not** send `car_connected` yet (E2), so real trips classify as `unknown` and
-  do not count toward the score until labelled `driver`. Only the simulator sends it.
+- `car_connected` comes from a manual "I'm driving" toggle (E2), not from the car's Bluetooth
+  or audio. If the user forgets to turn it on, the trip is typically `unknown` (transit rules still
+  apply) and does not count toward the score. Native car-audio detection is planned (H2).
 - The app has no screens for labelling trips (E3), incidents, or data deletion, although the
   API supports them.
 - Registration and consent happen automatically on first launch; there is no consent screen.

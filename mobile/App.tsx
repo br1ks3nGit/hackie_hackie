@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, Button, Switch, Pressable, StyleSheet, Alert, ScrollView } from 'react-native';
 import { API_BASE_URL } from './src/config';
 import { TripDetector } from './src/sensors/TripDetector';
 import { startSensors, stopSensors } from './src/sensors/SensorManager';
@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const STORAGE_KEYS = {
   DRIVER_ID: 'drivescore:driver_id',
   API_KEY: 'drivescore:api_key',
+  DRIVING_MODE: 'drivescore:driving_mode',
 };
 
 export default function App() {
@@ -31,11 +32,33 @@ export default function App() {
   const [lastTrip, setLastTrip] = useState<TripDetailResponse | null>(null);
   const [chunkCount, setChunkCount] = useState(0);
 
+  const [drivingMode, setDrivingMode] = useState(false);
+
   const detectorRef = useRef<TripDetector | null>(null);
+  // Read by TripDetector at chunk-build time, so flipping mid-trip applies to the next chunk
+  const drivingModeRef = useRef(false);
+  // Set once the user toggles, so a late AsyncStorage load cannot overwrite their choice
+  const touchedRef = useRef(false);
 
   useEffect(() => {
     initializeDriver();
+    AsyncStorage.getItem(STORAGE_KEYS.DRIVING_MODE)
+      .then((value) => {
+        if (touchedRef.current) return;
+        drivingModeRef.current = value === 'true';
+        setDrivingMode(value === 'true');
+      })
+      .catch((err) => console.warn('Could not read driving mode', err));
   }, []);
+
+  const changeDrivingMode = (value: boolean) => {
+    touchedRef.current = true;
+    drivingModeRef.current = value;
+    setDrivingMode(value);
+    AsyncStorage.setItem(STORAGE_KEYS.DRIVING_MODE, String(value)).catch((err) =>
+      console.warn('Could not save driving mode', err),
+    );
+  };
 
   const initializeDriver = async () => {
     try {
@@ -82,6 +105,7 @@ export default function App() {
 
   const setupDetector = () => {
     detectorRef.current = new TripDetector({
+      isDriving: () => drivingModeRef.current,
       onTripStart: (tripId) => {
         setInTrip(true);
         setCurrentTripId(tripId);
@@ -167,6 +191,21 @@ export default function App() {
         </View>
       )}
 
+      <Pressable
+        style={styles.drivingRow}
+        onPress={() => changeDrivingMode(!drivingMode)}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: drivingMode }}
+        accessibilityLabel="I'm driving"
+      >
+        <Text style={styles.drivingLabel}>I'm driving: {drivingMode ? 'On' : 'Off'}</Text>
+        <Switch value={drivingMode} onValueChange={changeDrivingMode} accessible={false} />
+      </Pressable>
+      <Text style={styles.drivingHint}>
+        Turn on when you are the driver. Trips recorded while off do not count toward your score
+        unless you confirm them later.
+      </Text>
+
       <Button
         title={recording ? 'Stop Recording' : 'Start Recording'}
         onPress={toggleRecording}
@@ -176,6 +215,7 @@ export default function App() {
       {recording && (
         <View style={styles.statusBox}>
           <Text>Status: {inTrip ? 'In trip' : 'Recording (idle)'}</Text>
+          <Text>Driving: {drivingMode ? 'Yes' : 'No'}</Text>
           <Text>Chunks uploaded: {chunkCount}</Text>
           {currentTripId && <Text>Trip: {currentTripId.substring(0, 16)}...</Text>}
         </View>
@@ -216,6 +256,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 20,
+  },
+  drivingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    marginBottom: 4,
+  },
+  drivingLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  drivingHint: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 16,
   },
   scoreBox: {
     padding: 15,
