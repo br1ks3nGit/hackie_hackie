@@ -1230,45 +1230,13 @@
             "examples": [
               0.45
             ]
-          },
-          "lat": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lat",
-            "description": "Latitude, degrees.",
-            "examples": [
-              22.3193
-            ]
-          },
-          "lon": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lon",
-            "description": "Longitude, degrees.",
-            "examples": [
-              114.1694
-            ]
           }
         },
         "type": "object",
         "required": [
           "type",
           "time",
-          "peak_g",
-          "lat",
-          "lon"
+          "peak_g"
         ],
         "title": "EventResponse",
         "description": "A detected driving event within a trip."
@@ -1281,26 +1249,6 @@
             "description": "Fix time, epoch milliseconds (UTC).",
             "examples": [
               1767225600000
-            ]
-          },
-          "lat": {
-            "type": "number",
-            "maximum": 90.0,
-            "minimum": -90.0,
-            "title": "Lat",
-            "description": "Latitude, degrees.",
-            "examples": [
-              22.3193
-            ]
-          },
-          "lon": {
-            "type": "number",
-            "maximum": 180.0,
-            "minimum": -180.0,
-            "title": "Lon",
-            "description": "Longitude, degrees.",
-            "examples": [
-              114.1694
             ]
           },
           "speed": {
@@ -1353,14 +1301,13 @@
             ]
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "t",
-          "lat",
-          "lon"
+          "t"
         ],
         "title": "GPSSample",
-        "description": "One GPS fix."
+        "description": "One GPS fix. Coordinates are never accepted: they stay on the phone."
       },
       "HTTPValidationError": {
         "properties": {
@@ -1487,36 +1434,6 @@
               "2026-01-02T03:04:05Z"
             ]
           },
-          "lat": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lat",
-            "description": "Latitude, degrees.",
-            "examples": [
-              22.3193
-            ]
-          },
-          "lon": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lon",
-            "description": "Longitude, degrees.",
-            "examples": [
-              114.1694
-            ]
-          },
           "peak_g": {
             "anyOf": [
               {
@@ -1559,6 +1476,7 @@
             "description": "Sensor summary around the incident."
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "time"
@@ -1591,36 +1509,6 @@
             "description": "When it happened (UTC).",
             "examples": [
               "2026-01-02T03:04:05Z"
-            ]
-          },
-          "lat": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lat",
-            "description": "Latitude, degrees.",
-            "examples": [
-              22.3193
-            ]
-          },
-          "lon": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lon",
-            "description": "Longitude, degrees.",
-            "examples": [
-              114.1694
             ]
           },
           "peak_g": {
@@ -1670,8 +1558,6 @@
           "id",
           "type",
           "time",
-          "lat",
-          "lon",
           "peak_g",
           "confirmed",
           "created_at"
@@ -1957,49 +1843,6 @@
         "title": "ReprocessResponse",
         "description": "Response of POST /v1/trips/{trip_id}/reprocess."
       },
-      "RoutePoint": {
-        "properties": {
-          "lat": {
-            "type": "number",
-            "title": "Lat",
-            "description": "Latitude, degrees.",
-            "examples": [
-              22.3193
-            ]
-          },
-          "lon": {
-            "type": "number",
-            "title": "Lon",
-            "description": "Longitude, degrees.",
-            "examples": [
-              114.1694
-            ]
-          },
-          "speed": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Speed",
-            "description": "GPS speed, m/s; null if unknown.",
-            "examples": [
-              13.4
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "lat",
-          "lon",
-          "speed"
-        ],
-        "title": "RoutePoint",
-        "description": "A downsampled route point."
-      },
       "SensorSnapshot": {
         "properties": {
           "peak_g": {
@@ -2048,10 +1891,10 @@
             ]
           }
         },
-        "additionalProperties": true,
+        "additionalProperties": false,
         "type": "object",
         "title": "SensorSnapshot",
-        "description": "Summary of sensor data around a crash. Extra keys from clients are kept."
+        "description": "Summary of sensor data around a crash. Unknown keys (e.g. coordinates) are rejected."
       },
       "TripChunkRequest": {
         "properties": {
@@ -2098,6 +1941,7 @@
             ]
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "seq",
@@ -2241,14 +2085,6 @@
             "title": "Events",
             "description": "Detected events, in time order."
           },
-          "route": {
-            "items": {
-              "$ref": "#/components/schemas/RoutePoint"
-            },
-            "type": "array",
-            "title": "Route",
-            "description": "Downsampled route, at most about 100 points."
-          },
           "explanation": {
             "anyOf": [
               {
@@ -2273,7 +2109,6 @@
           "confidence",
           "tier",
           "events",
-          "route",
           "explanation"
         ],
         "title": "TripDetailResponse",

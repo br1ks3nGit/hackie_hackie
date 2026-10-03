@@ -45,8 +45,6 @@ export async function startSensors(
     (location) => {
       onGps({
         t: location.timestamp / 1000,
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
         speed: location.coords.speed ?? undefined,
         accuracy: location.coords.accuracy ?? undefined,
       });

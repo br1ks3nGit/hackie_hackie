@@ -60,8 +60,6 @@ def test_label_trip_as_passenger_removes_from_score():
             "gps": [
                 {
                     "t": 1759986000000 + i * 1000,
-                    "lat": 22.50 + i * 0.005,
-                    "lon": 114.30 + i * 0.005,
                     "speed": 15.0,
                 }
                 for i in range(60)
@@ -103,8 +101,6 @@ def test_label_trip_as_driver_adds_to_score():
             "gps": [
                 {
                     "t": 1759986000000 + i * 1000,
-                    "lat": 22.50 + i * 0.005,
-                    "lon": 114.30 + i * 0.005,
                     "speed": 15.0,
                 }
                 for i in range(60)
@@ -167,8 +163,6 @@ def test_trip_list_includes_trip_type():
             "gps": [
                 {
                     "t": 1759986000000 + i * 1000,
-                    "lat": 22.50 + i * 0.005,
-                    "lon": 114.30 + i * 0.005,
                     "speed": 15.0,
                 }
                 for i in range(60)
@@ -208,8 +202,6 @@ def test_create_and_confirm_incident():
         json={
             "type": "crash",
             "time": datetime.now(UTC).isoformat(),
-            "lat": 22.3193,
-            "lon": 114.1694,
             "peak_g": 5.2,
         },
     )
@@ -229,8 +221,6 @@ def _incident_body(trip_id=None):
     body = {
         "type": "crash",
         "time": datetime.now(UTC).isoformat(),
-        "lat": 22.3193,
-        "lon": 114.1694,
         "peak_g": 5.2,
     }
     if trip_id is not None:
@@ -305,8 +295,6 @@ def test_insurer_detail_includes_passenger_share():
             "gps": [
                 {
                     "t": 1759986000000 + i * 1000,
-                    "lat": 22.50 + i * 0.005,
-                    "lon": 114.30 + i * 0.005,
                     "speed": 15.0,
                 }
                 for i in range(60)
@@ -334,7 +322,7 @@ def test_insurer_detail_includes_passenger_share():
     assert "flagged_for_review" in data
 
 
-def test_incident_sensor_snapshot_keeps_extra_and_null_omits_unset():
+def test_incident_sensor_snapshot_stores_allowed_keys_and_omits_unset():
     _driver_id, api_key = _register_and_consent()
 
     response = client.post(
@@ -343,7 +331,7 @@ def test_incident_sensor_snapshot_keeps_extra_and_null_omits_unset():
         json={
             "type": "crash",
             "time": datetime.now(UTC).isoformat(),
-            "sensor_snapshot": {"peak_g": 4.5, "vendor_flag": "x", "imu_samples": None},
+            "sensor_snapshot": {"peak_g": 4.5, "imu_samples": None},
         },
     )
     assert response.status_code == 200
@@ -351,11 +339,30 @@ def test_incident_sensor_snapshot_keeps_extra_and_null_omits_unset():
     with SessionLocal() as db:
         incident = db.get(Incident, response.json()["id"])
         assert incident is not None
-        assert incident.sensor_snapshot == {
-            "peak_g": 4.5,
-            "vendor_flag": "x",
-            "imu_samples": None,
-        }
+        assert incident.sensor_snapshot == {"peak_g": 4.5, "imu_samples": None}
+
+
+@pytest.mark.parametrize("extra", [{"lat": 1.5, "lon": 2.5}, {"vendor_flag": "x"}])
+def test_incident_sensor_snapshot_rejects_unknown_keys(extra):
+    _driver_id, api_key = _register_and_consent()
+
+    response = client.post(
+        "/v1/me/incidents",
+        headers={"X-API-Key": api_key},
+        json={
+            "type": "crash",
+            "time": datetime.now(UTC).isoformat(),
+            "sensor_snapshot": {"peak_g": 4.5, **extra},
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_strip_coordinates_drops_coordinate_keys():
+    from app.privacy import strip_coordinates
+
+    data = {"peak_g": 1.0, "lat": 1, "lon": 2, "lng": 3, "latitude": 4, "longitude": 5}
+    assert strip_coordinates(data) == {"peak_g": 1.0}
 
 
 @pytest.mark.parametrize("trip_type", ["transit", "bogus"])

@@ -51,6 +51,8 @@ def _load_all_chunks(trip_id: str) -> tuple[pd.DataFrame, pd.DataFrame, float | 
 
     imu_df = pd.DataFrame(imu_rows)
     gps_df = pd.DataFrame(gps_rows)
+    # Speed is the only GPS signal kept; a frame without it means all-missing speeds
+    gps_df = gps_df.assign(speed=gps_df.get("speed", np.nan))
 
     # Convert epoch ms to datetime
     imu_df["time"] = pd.to_datetime(imu_df["t"], unit="ms", utc=True)
@@ -88,6 +90,10 @@ def _quality_check(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> None:
             f"Trip too short: {duration_s:.1f}s < {settings.trip_min_duration_s}s"
         )
 
+    # Speed is the only GPS signal kept; without it distance cannot be computed
+    if _gps_speeds(gps_df).isna().all():
+        raise QualityCheckError("No GPS speed data")
+
     # Check distance (integrated GPS speed)
     distance_km = _calculate_distance_km(gps_df)
     if distance_km < settings.trip_min_distance_km:
@@ -96,17 +102,25 @@ def _quality_check(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> None:
         )
 
 
+def _gps_speeds(gps_df: pd.DataFrame) -> pd.Series:
+    """Speed column as floats; NaN where missing or negative; all NaN if the column is absent."""
+    if "speed" not in gps_df.columns:
+        return pd.Series(np.nan, index=gps_df.index, dtype=float)
+    speed = pd.to_numeric(gps_df["speed"], errors="coerce").astype(float)
+    return speed.mask(speed < 0)
+
+
 def _calculate_distance_km(gps_df: pd.DataFrame) -> float:
     """Distance from GPS speed: trapezoid integral of speed (m/s) over time.
 
-    Negative or missing speeds count as 0; each interval is capped at the max GPS gap so a
-    long gap does not add phantom distance. Uses no coordinates.
+    Missing or negative speeds are forward-filled from the previous valid sample (leading
+    gaps count as 0); each interval is capped at the max GPS gap so a long gap does not add
+    phantom distance. Uses no coordinates.
     """
     if len(gps_df) < 2:
         return 0.0
     t = gps_df["t"].to_numpy(dtype=float)
-    speed = pd.to_numeric(gps_df["speed"], errors="coerce").to_numpy(dtype=float)
-    speed = np.where(np.isnan(speed) | (speed < 0), 0.0, speed)
+    speed = _gps_speeds(gps_df).ffill().fillna(0.0).to_numpy(dtype=float)
     dt_s = np.minimum(np.diff(t) / 1000.0, settings.trip_max_gps_gap_s)
     dt_s = np.maximum(dt_s, 0.0)
     distance_m = np.sum((speed[:-1] + speed[1:]) / 2.0 * dt_s)

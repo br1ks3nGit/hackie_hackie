@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.models import Consent, Driver, Trip, TripChunk
 from app.pipeline import process_trip
+from app.privacy import strip_coordinates
 from app.schemas import (
     ConsentRequest,
     ConsentResponse,
@@ -26,14 +27,6 @@ from app.schemas import (
 
 router = APIRouter()
 settings = get_settings()
-
-
-COORDINATE_KEYS = ("lat", "lon", "lng")
-
-
-def _strip_coordinates(sample: dict) -> dict:
-    """Drop location fields from a GPS sample so coordinates never reach disk."""
-    return {k: v for k, v in sample.items() if k not in COORDINATE_KEYS}
 
 
 @router.post("/drivers/register", response_model=DriverRegisterResponse)
@@ -116,7 +109,7 @@ def upload_chunk(
     chunk_data = {
         "seq": chunk.seq,
         "imu": [s.model_dump() for s in chunk.imu],
-        "gps": [_strip_coordinates(s.model_dump()) for s in chunk.gps],
+        "gps": [strip_coordinates(s.model_dump()) for s in chunk.gps],
         "car_connected": chunk.car_connected,
     }
 

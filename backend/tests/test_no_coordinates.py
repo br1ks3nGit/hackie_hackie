@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.database import SessionLocal
 from app.main import app
-from app.models import Event, Incident, TripFeature
+from app.models import Event, Incident, TripChunk, TripFeature
 from app.pipeline import process_trip
 
 client = TestClient(app)
@@ -32,8 +32,6 @@ def _imu(i: int, spike_at: int | None = None) -> dict:
 def _gps(i: int, speed: float) -> dict:
     return {
         "t": T0 + i * 1000,
-        "lat": 22.3 + i * 0.0001,
-        "lon": 114.1 + i * 0.0001,
         "speed": speed,
         "heading": 90.0,
         "accuracy": 5.0,
@@ -94,4 +92,47 @@ def test_processed_events_and_incidents_have_no_location() -> None:
 
     detail = client.get(f"/v1/me/trips/{trip_id}", headers={"X-API-Key": api_key})
     assert detail.status_code == 200
-    assert detail.json()["route"] == []
+    body = detail.json()
+    assert "route" not in body
+    assert _no_location_keys(body)
+    assert all(_no_location_keys(e) for e in body["events"])
+    assert _no_location_keys(client.get("/v1/me/incidents", headers={"X-API-Key": api_key}).json())
+
+
+def _no_location_keys(obj: object) -> bool:
+    """True when no dict anywhere in obj has a location or route key."""
+    banned = {"lat", "lon", "lng", "latitude", "longitude", "route"}
+    if isinstance(obj, dict):
+        return banned.isdisjoint(obj) and all(_no_location_keys(v) for v in obj.values())
+    if isinstance(obj, list):
+        return all(_no_location_keys(v) for v in obj)
+    return True
+
+
+def test_chunk_with_coordinates_is_rejected_and_not_written() -> None:
+    api_key, trip_id = _register_and_start()
+    for key in ("lat", "lon", "lng"):
+        gps = {**_gps(0, 10.0), key: 22.3}
+        response = client.post(
+            f"/v1/trips/{trip_id}/chunks",
+            headers={"X-API-Key": api_key},
+            json={"seq": 0, "imu": [_imu(0)], "gps": [gps]},
+        )
+        assert response.status_code == 422, key
+    trip_dir = os.path.join(get_settings().data_dir, trip_id)
+    assert not os.path.exists(trip_dir) or not os.listdir(trip_dir)
+    with SessionLocal() as db:
+        assert db.query(TripChunk).filter(TripChunk.trip_id == trip_id).count() == 0
+
+
+def test_incident_with_coordinates_is_rejected() -> None:
+    api_key, _trip_id = _register_and_start()
+    body = {"type": "crash", "time": "2026-01-02T03:04:05Z", "peak_g": 5.0}
+    ok = client.post("/v1/me/incidents", headers={"X-API-Key": api_key}, json=body)
+    assert ok.status_code == 200
+    assert _no_location_keys(ok.json())
+    for key in ("lat", "lon", "lng"):
+        response = client.post(
+            "/v1/me/incidents", headers={"X-API-Key": api_key}, json={**body, key: 22.3}
+        )
+        assert response.status_code == 422, key

@@ -18,8 +18,6 @@ _TS = "2026-01-02T03:04:05Z"
 _EPOCH_MS = 1767225600000
 _TRIP_ID = "trp_1a2b3c"
 _DRIVER_ID = "drv_8f3a2c"
-_LAT = 22.3193
-_LON = 114.1694
 
 # --- Auth / Registration ---
 
@@ -87,11 +85,11 @@ class IMUSample(BaseModel):
 
 
 class GPSSample(BaseModel):
-    """One GPS fix."""
+    """One GPS fix. Coordinates are never accepted: they stay on the phone."""
+
+    model_config = ConfigDict(extra="forbid")
 
     t: int = Field(description="Fix time, epoch milliseconds (UTC).", examples=[_EPOCH_MS])
-    lat: float = Field(..., ge=-90, le=90, description="Latitude, degrees.", examples=[_LAT])
-    lon: float = Field(..., ge=-180, le=180, description="Longitude, degrees.", examples=[_LON])
     speed: float | None = Field(None, ge=0, description="Ground speed, m/s.", examples=[13.4])
     heading: float | None = Field(
         None, ge=0, lt=360, description="Course over ground, degrees (0 to <360).", examples=[90.0]
@@ -103,6 +101,8 @@ class GPSSample(BaseModel):
 
 class TripChunkRequest(BaseModel):
     """Request body of POST /v1/trips/{trip_id}/chunks (one slice of sensor data)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     seq: int = Field(
         ...,
@@ -177,16 +177,6 @@ class EventResponse(BaseModel):
     peak_g: float | None = Field(
         description="Peak acceleration in g; null for speeding events.", examples=[0.45]
     )
-    lat: float | None = Field(description="Latitude, degrees.", examples=[_LAT])
-    lon: float | None = Field(description="Longitude, degrees.", examples=[_LON])
-
-
-class RoutePoint(BaseModel):
-    """A downsampled route point."""
-
-    lat: float = Field(description="Latitude, degrees.", examples=[_LAT])
-    lon: float = Field(description="Longitude, degrees.", examples=[_LON])
-    speed: float | None = Field(description="GPS speed, m/s; null if unknown.", examples=[13.4])
 
 
 class TripDetailResponse(BaseModel):
@@ -208,7 +198,6 @@ class TripDetailResponse(BaseModel):
     )
     tier: Tier | None = Field(description="Risk tier derived from score; null if unscored.")
     events: list[EventResponse] = Field(description="Detected events, in time order.")
-    route: list[RoutePoint] = Field(description="Downsampled route, at most about 100 points.")
     explanation: str | None = Field(description="Plain-language summary of the score.")
 
 
@@ -351,9 +340,9 @@ class TripLabelResponse(BaseModel):
 
 
 class SensorSnapshot(BaseModel):
-    """Summary of sensor data around a crash. Extra keys from clients are kept."""
+    """Summary of sensor data around a crash. Unknown keys (e.g. coordinates) are rejected."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     peak_g: float | None = Field(None, description="Peak acceleration, g.", examples=[5.2])
     imu_samples: int | None = Field(
@@ -367,14 +356,14 @@ class SensorSnapshot(BaseModel):
 class IncidentCreate(BaseModel):
     """Request body of POST /v1/me/incidents."""
 
+    model_config = ConfigDict(extra="forbid")
+
     type: str = Field(
         "crash", description="Incident kind; only crash is produced today.", examples=["crash"]
     )
     time: datetime = Field(
         description="When it happened; naive values are read as UTC.", examples=[_TS]
     )
-    lat: float | None = Field(None, description="Latitude, degrees.", examples=[_LAT])
-    lon: float | None = Field(None, description="Longitude, degrees.", examples=[_LON])
     peak_g: float | None = Field(None, description="Peak acceleration, g.", examples=[5.2])
     trip_id: str | None = Field(None, description="Related trip id, if any.", examples=[_TRIP_ID])
     sensor_snapshot: SensorSnapshot | None = Field(
@@ -401,8 +390,6 @@ class IncidentResponse(BaseModel):
     id: int = Field(description="Incident id.", examples=[1])
     type: str = Field(description="Incident kind, e.g. crash.", examples=["crash"])
     time: datetime = Field(description="When it happened (UTC).", examples=[_TS])
-    lat: float | None = Field(description="Latitude, degrees.", examples=[_LAT])
-    lon: float | None = Field(description="Longitude, degrees.", examples=[_LON])
     peak_g: float | None = Field(description="Peak acceleration, g.", examples=[5.2])
     confirmed: IncidentConfirmation | None = Field(
         description="Driver's answer; null until confirmed."

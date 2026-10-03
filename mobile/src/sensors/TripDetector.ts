@@ -177,8 +177,6 @@ export class TripDetector {
       imu: this._mergeImuSamples(accel, gyro),
       gps: gpsPoints.map(p => ({
         t: Math.round(p.t * 1000),
-        lat: p.lat,
-        lon: p.lng,
         speed: p.speed,
         accuracy: p.accuracy,
       })),
