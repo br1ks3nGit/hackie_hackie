@@ -1,5 +1,7 @@
 import secrets
+from datetime import UTC, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import Form, Header, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
@@ -9,7 +11,21 @@ LOGIN_URL = "/dashboard/login"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 SESSION_MAX_AGE_S = 8 * 60 * 60
 
+HK_TZ = ZoneInfo("Asia/Hong_Kong")
+
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+
+
+def _hk_time(value: datetime | None) -> str:
+    """Format a datetime in Hong Kong local time (naive values are taken as UTC)."""
+    if value is None:
+        return "-"
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(HK_TZ).strftime("%Y-%m-%d %H:%M")
+
+
+templates.env.filters["hk_time"] = _hk_time
 
 
 class LoginRequired(Exception):

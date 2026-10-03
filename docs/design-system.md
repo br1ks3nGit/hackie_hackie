@@ -230,9 +230,12 @@ Pagination (`<nav aria-label="Pagination">`): "Showing 21-40 of 133" (`text-sm t
 
 ### 3.7 Tier badge (`tier-badge`)
 
+Sortable table headers are real links (`href` works without JS; HTMX enhances them) with sr-only text for the action. Tier badge pattern: visible letter `aria-hidden="true"` plus `<span class="sr-only">Tier A</span>` (no `aria-label` on the span).
+
 `inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs font-semibold` + `bg-tier-a-soft text-tier-a-ink` (per tier).
-Content: letter always visible: `<span>A</span>`; larger variant `lg` = `text-base px-3 py-1`. Add `aria-label="Tier A, best"` for A and `"Tier E, worst"` for E;
-B-D `aria-label="Tier C"`. Score ring/bars use solid `bg-tier-x` with the letter printed next to them.
+Content: letter always visible: `<span aria-hidden="true">A</span><span class="sr-only">Tier A</span>`
+(no `aria-label` on a role-less span); larger variant `lg` = `text-base px-3 py-1`. Score ring/bars use
+solid `bg-tier-x` with the letter printed next to them.
 Dynamic tier classes: map tier->class literally in the macro (a dict of full class strings), never string-build `bg-tier-` + letter
 (or add them to the UnoCSS `safelist`; coder must safelist all tier/status/event classes).
 
