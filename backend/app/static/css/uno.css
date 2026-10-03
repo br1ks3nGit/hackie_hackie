@@ -55,6 +55,7 @@
 .grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr));}
 .m-0{margin:0;}
 .mx-auto{margin-left:auto;margin-right:auto;}
+.ml-2{margin-left:0.5rem;}
 .ml-auto{margin-left:auto;}
 .mt-1{margin-top:0.25rem;}
 .mt-16{margin-top:4rem;}

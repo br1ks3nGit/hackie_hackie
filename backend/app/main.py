@@ -14,6 +14,7 @@ from app.routers import (
     admin,
     dashboard,
     dashboard_drivers,
+    dashboard_incidents,
     dashboard_trips,
     driver,
     incidents,
@@ -79,6 +80,7 @@ app.include_router(incidents.router, prefix="/v1", tags=["reports"])
 app.include_router(admin.router, prefix="/v1", tags=["admin"])
 app.include_router(dashboard.router)
 app.include_router(dashboard_drivers.router)
+app.include_router(dashboard_incidents.router)
 app.include_router(dashboard_trips.router)
 
 

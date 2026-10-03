@@ -288,6 +288,14 @@ alternative to the map) and any crash incidents. Trips without a route show "No 
 show a dashboard-styled 404. Leaflet 1.9.4 is vendored and loaded on this page only; map tiles come from
 the OpenStreetMap tile server (the browser needs internet access, attribution is shown on the map).
 
+**Incidents** (`/dashboard/incidents`): crash incidents newest first (20 per page) with Hong Kong time, driver
+and trip links, peak g, location (4 decimals; "View on map" links to the trip page, otherwise an
+OpenStreetMap link) and a confirmation pill (Help needed, No response, OK, Unconfirmed; help-needed rows are
+highlighted). Query params: `status` (`help_needed`, `no_response`, `ok`, `unconfirmed`, default all) and
+`page`; unknown values fall back to the defaults. Filter and page changes swap the partial
+`/dashboard/partials/incidents` via HTMX with `HX-Push-Url`, and the page works without JavaScript. Uses
+`app/services/incidents.py`.
+
 ### Demo data
 
 With the API running (Option A: seed with `docker compose exec api python scripts/seed.py`;
