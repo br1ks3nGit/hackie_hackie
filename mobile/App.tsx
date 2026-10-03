@@ -63,7 +63,11 @@ export default function App() {
       await refreshSummary(response.api_key);
     } catch (err) {
       console.error('Failed to initialize driver', err);
-      Alert.alert('Setup Error', `Could not reach ${API_BASE_URL}. Make sure the backend is running and set EXPO_PUBLIC_API_BASE_URL to http://<laptop LAN IP>:8000`);
+      Alert.alert(
+        'Setup Error',
+        `Could not reach ${API_BASE_URL}. Make sure the backend is running and set ` +
+          'EXPO_PUBLIC_API_BASE_URL to http://<laptop LAN IP>:8000',
+      );
     }
   };
 
