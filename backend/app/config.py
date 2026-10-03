@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,6 +21,9 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://localhost:19006"
     data_dir: str = "./data/raw"
     model_path: str = "./models/model.pkl"
+    # "placeholder" = rules / models/model.pkl; "window" = 250-sample window model on the IMU
+    model_kind: Literal["placeholder", "window"] = "placeholder"
+    window_model_path: str = "../model/remade_model/model.json"
     trip_min_distance_km: float = 1.0
     trip_max_gps_gap_s: float = 30.0
     trip_min_duration_s: float = 60.0

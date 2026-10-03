@@ -3,6 +3,7 @@ import pickle
 from typing import Any
 
 from app.config import get_settings
+from app.window_model import load_window_model
 
 settings = get_settings()
 
@@ -53,6 +54,8 @@ _model_version = "placeholder"
 def load_model() -> None:
     """Load the model from disk if it exists. Called once at startup."""
     global _model, _model_version
+    if settings.model_kind == "window":
+        load_window_model()
     if os.path.exists(settings.model_path):
         try:
             with open(settings.model_path, "rb") as f:

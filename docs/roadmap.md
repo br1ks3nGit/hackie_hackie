@@ -90,6 +90,11 @@ Decision: GPS is read for speed only (and its accuracy), about once per second w
 - [x] P3 `events.lat/lon` and `incidents.lat/lon` removed; migration history squashed into one `0001_initial` (nothing deployed yet); `scripts/scrub_coordinates.py` cleans raw chunk files. Privacy Option B complete.
 - [x] M5a `DELETE /v1/me` (PDPO): one transaction for rows, then raw files, path-checked (`app/services/erasure.py`).
 
+## Phase ML - Model
+- [x] ML1 Window model behind `MODEL_KIND=window` (default `placeholder`): `app/window_model.py` ports
+      `model/remade_model/serve.py`; trip risk = share of 250-sample windows with risk > 0.5.
+      Open: re-baseline on recorded phone trips before relying on it.
+
 ## Phase G - Docs
 - [ ] G1 Rewrite `docs/handoff.md` and `contracts/` from the generated OpenAPI contract.
 
