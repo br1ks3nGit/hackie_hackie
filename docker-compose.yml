@@ -16,5 +16,31 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://drivescore:drivescore@db:5432/drivescore
+      INSURER_API_KEY: ${INSURER_API_KEY:?set INSURER_API_KEY}
+      DRIVER_API_KEY_SALT: ${DRIVER_API_KEY_SALT:?set DRIVER_API_KEY_SALT}
+      DATA_DIR: /data/raw
+      MODEL_PATH: /models/model.pkl
+    volumes:
+      - rawdata:/data/raw
+      - models:/models
+    ports:
+      # Bound to all interfaces on purpose: phones on the LAN must reach the API.
+      - "0.0.0.0:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
 volumes:
   pgdata:
+  rawdata:
+  models:

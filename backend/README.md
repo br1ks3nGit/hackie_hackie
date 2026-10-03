@@ -56,6 +56,28 @@ uv run python scripts/seed.py
 uv run python scripts/export_openapi.py
 ```
 
+## Run everything with Docker
+
+From the repo root (needs Docker only, no local Python):
+
+```bash
+export INSURER_API_KEY=change-me DRIVER_API_KEY_SALT=change-me-too   # or put both in a root .env
+docker compose up -d --build
+```
+
+Compose refuses to start `api` if either key is unset. The `api` container waits for the
+healthy `db`, runs `alembic upgrade head`, then serves on `0.0.0.0:8000` (reachable from phones
+on the LAN). Check it with `curl localhost:8000/health` and `docker compose logs api`.
+
+Raw chunks live in the `rawdata` volume (`/data/raw`); put a trained `model.pkl` in the `models`
+volume (`/models`), otherwise the app falls back to its default scoring.
+
+Seed demo data (the script targets `http://localhost:8000`, which is valid inside the container):
+
+```bash
+docker compose exec api python scripts/seed.py
+```
+
 ## Data flow
 
 ```
