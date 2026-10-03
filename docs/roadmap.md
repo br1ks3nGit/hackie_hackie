@@ -77,6 +77,7 @@ Decision: GPS is used on the phone for speed only; latitude and longitude are ne
 - [x] P2 Pipeline, API and mobile are coordinate-free.
 - [x] P4 Dashboard and docs: no map, no locations, Leaflet removed.
 - [x] P3 `events.lat/lon` and `incidents.lat/lon` removed; migration history squashed into one `0001_initial` (nothing deployed yet); `scripts/scrub_coordinates.py` cleans raw chunk files. Privacy Option B complete.
+- [x] M5a `DELETE /v1/me` (PDPO): one transaction for rows, then raw files, path-checked (`app/services/erasure.py`).
 
 ## Phase G - Docs
 - [ ] G1 Rewrite `docs/handoff.md` and `contracts/` from the generated OpenAPI contract.
