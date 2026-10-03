@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_driver
 from app.database import get_db
-from app.models import Driver, Incident
+from app.models import Driver, Incident, Trip
 from app.schemas import IncidentConfirm, IncidentCreate, IncidentResponse
 
 router = APIRouter()
@@ -15,6 +15,13 @@ def create_incident(
     driver: Driver = Depends(get_current_driver),
     db: Session = Depends(get_db),
 ):
+    if request.trip_id is not None:
+        trip = (
+            db.query(Trip).filter(Trip.id == request.trip_id, Trip.driver_id == driver.id).first()
+        )
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found")
+
     incident = Incident(
         driver_id=driver.id,
         trip_id=request.trip_id,
