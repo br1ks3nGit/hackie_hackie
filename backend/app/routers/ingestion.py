@@ -3,6 +3,7 @@ import json
 import os
 import uuid
 from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.auth import get_current_driver, generate_api_key, hash_api_key
@@ -45,12 +46,12 @@ def register_driver(
 
 
 @router.post("/consent", response_model=ConsentResponse)
-def give_consent(request: ConsentRequest, db: Session = Depends(get_db)):
-    driver = db.query(Driver).filter(Driver.id == request.driver_id).first()
-    if not driver:
-        raise HTTPException(status_code=404, detail="Driver not found")
-
-    consent = Consent(driver_id=request.driver_id, version=request.version)
+def give_consent(
+    request: ConsentRequest,
+    driver: Driver = Depends(get_current_driver),
+    db: Session = Depends(get_db),
+):
+    consent = Consent(driver_id=driver.id, version=request.version)
     db.add(consent)
     db.commit()
     return ConsentResponse(status="consent_recorded", granted_at=consent.granted_at)
@@ -84,7 +85,9 @@ def upload_chunk(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    if trip.status not in ["uploading", "processing"]:
+    # Chunks are only accepted while the trip is open; the mobile client sends
+    # /end only after the final chunk has been acknowledged
+    if trip.status != "uploading":
         raise HTTPException(status_code=400, detail=f"Cannot upload chunks to trip in status {trip.status}")
 
     # Idempotency: if chunk already exists, return success
@@ -110,23 +113,30 @@ def upload_chunk(
     # Record in DB
     trip_chunk = TripChunk(trip_id=trip_id, seq=chunk.seq, file_path=chunk_path)
     db.add(trip_chunk)
-
-    # Update bluetooth ratio if car_connected is provided
-    if chunk.car_connected is not None:
-        chunks_with_bt = db.query(TripChunk).filter(TripChunk.trip_id == trip_id).count()
-        connected_count = db.query(TripChunk).filter(
-            TripChunk.trip_id == trip_id,
-        ).count()
-        # Simple approximation: ratio of chunks with car_connected=True
-        # In production, weight by chunk duration
-        if chunk.car_connected:
-            trip.bluetooth_connected_ratio = 1.0
-        else:
-            trip.bluetooth_connected_ratio = 0.0
-
     db.commit()
 
     return TripChunkResponse(status="received", received_at=trip_chunk.received_at)
+
+
+def _read_trip_end_time(trip_id: str) -> Optional[datetime]:
+    """Read the last GPS sample timestamp from the highest-seq chunk file."""
+    trip_dir = os.path.join(settings.data_dir, trip_id)
+    if not os.path.exists(trip_dir):
+        return None
+
+    files = [f for f in os.listdir(trip_dir) if f.endswith(".json.gz")]
+    files.sort(key=lambda f: int(f.replace(".json.gz", "")), reverse=True)
+
+    for filename in files:
+        try:
+            with gzip.open(os.path.join(trip_dir, filename), "rt", encoding="utf-8") as f:
+                chunk = json.load(f)
+        except (OSError, ValueError):
+            continue
+        gps = chunk.get("gps", [])
+        if gps:
+            return datetime.utcfromtimestamp(gps[-1]["t"] / 1000.0)
+    return None
 
 
 @router.post("/trips/{trip_id}/end", response_model=TripEndResponse)
@@ -143,6 +153,8 @@ def end_trip(
     if trip.status != "uploading":
         raise HTTPException(status_code=400, detail=f"Cannot end trip in status {trip.status}")
 
+    # ended_at reflects the last recorded GPS sample, not the processing time
+    trip.ended_at = _read_trip_end_time(trip_id) or datetime.utcnow()
     trip.status = "processing"
     db.commit()
 

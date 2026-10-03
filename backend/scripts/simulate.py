@@ -38,7 +38,7 @@ def register_and_simulate(trip_type: str = "calm") -> str:
     response = requests.post(
         f"{BASE_URL}/consent",
         headers={"X-API-Key": api_key},
-        json={"driver_id": driver_id, "version": "1.0"},
+        json={"version": "1.0"},
     )
     response.raise_for_status()
     print("Consent recorded")
@@ -70,14 +70,15 @@ def register_and_simulate(trip_type: str = "calm") -> str:
         gps_samples = []
 
         for t in range(chunk_start, chunk_end, 20):  # 50 Hz IMU
+            # Accelerometer in g (gravity ~1g on az); gyro in rad/s
             if trip_type == "aggressive":
-                ax = random.uniform(-0.8, 0.8)
-                ay = random.uniform(-0.6, 0.6)
+                ax = random.uniform(-0.08, 0.08)
+                ay = random.uniform(-0.08, 0.08)
             else:
-                ax = random.uniform(-0.2, 0.2)
-                ay = random.uniform(-0.15, 0.15)
+                ax = random.uniform(-0.02, 0.02)
+                ay = random.uniform(-0.02, 0.02)
 
-            # Add known harsh events
+            # Add known harsh events (0.4-0.6 g)
             if trip_type == "aggressive" and random.random() < 0.001:
                 ax = random.uniform(-0.6, -0.4)  # harsh brake
             elif trip_type == "aggressive" and random.random() < 0.001:
@@ -87,7 +88,7 @@ def register_and_simulate(trip_type: str = "calm") -> str:
                 "t": t,
                 "ax": ax,
                 "ay": ay,
-                "az": 9.8 + random.uniform(-0.1, 0.1),
+                "az": 1.0 + random.uniform(-0.01, 0.01),
                 "gx": random.uniform(-0.1, 0.1),
                 "gy": random.uniform(-0.1, 0.1),
                 "gz": random.uniform(-0.1, 0.1),

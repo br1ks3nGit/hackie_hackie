@@ -16,7 +16,6 @@ class DriverRegisterResponse(BaseModel):
 
 
 class ConsentRequest(BaseModel):
-    driver_id: str
     version: str
 
 

@@ -65,13 +65,13 @@ export class TripDetector {
     } else if (this.inTrip && this.lastMotionAt !== null) {
       const idleFor = now - this.lastMotionAt;
       if (idleFor >= TRIP_END_IDLE_S * 1000) {
-        this._endTrip();
+        void this._endTrip();
       }
     }
 
     // Upload chunk if enough time has passed
     if (this.inTrip && now - this.lastChunkUpload >= CHUNK_INTERVAL_MS) {
-      this._uploadChunk();
+      void this._uploadChunk();
     }
   }
 
@@ -85,7 +85,7 @@ export class TripDetector {
 
   async forceEnd() {
     if (this.inTrip) {
-      this._endTrip();
+      await this._endTrip();
     }
   }
 
@@ -108,25 +108,41 @@ export class TripDetector {
     }
   }
 
-  private _endTrip() {
+  private async _endTrip() {
     if (!this.inTrip || this.startedAt === null) return;
 
-    // Upload final chunk
-    this._uploadChunk();
+    // Upload the final chunk (with retries) BEFORE ending the trip on the
+    // server: /end is only sent once the last chunk is acknowledged.
+    await this._uploadFinalChunkWithRetry(3);
 
     this.inTrip = false;
-    if (this.tripId) {
-      this.onTripEnd?.(this.tripId);
-    }
+    const tripId = this.tripId;
 
     this.startedAt = null;
     this.lastMotionAt = null;
     this.tripId = null;
     this.apiKey = null;
+
+    if (tripId) {
+      this.onTripEnd?.(tripId);
+    }
   }
 
-  private async _uploadChunk() {
-    if (!this.tripId || !this.apiKey || this.accelSamples.length === 0) return;
+  private async _uploadFinalChunkWithRetry(maxAttempts: number): Promise<void> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const ok = await this._uploadChunk();
+      if (ok) return;
+      console.warn(`Final chunk upload attempt ${attempt}/${maxAttempts} failed`);
+      if (attempt < maxAttempts) {
+        // Small backoff before retrying
+        await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+      }
+    }
+    console.error('Final chunk upload failed after all retries; ending trip without it');
+  }
+
+  private async _uploadChunk(): Promise<boolean> {
+    if (!this.tripId || !this.apiKey || this.accelSamples.length === 0) return true;
 
     const chunk: TripChunkRequest = {
       seq: this.chunkSeq,
@@ -150,9 +166,11 @@ export class TripDetector {
       this.accelSamples = [];
       this.gyroSamples = [];
       this.gpsPoints = [];
+      return true;
     } catch (err) {
       console.warn('Failed to upload chunk, will retry', err);
       // Keep samples for retry
+      return false;
     }
   }
 

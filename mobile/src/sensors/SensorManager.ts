@@ -22,8 +22,8 @@ export async function startSensors(
 
   await Location.requestBackgroundPermissionsAsync();
 
-  Accelerometer.setUpdateInterval(50); // 20 Hz
-  Gyroscope.setUpdateInterval(50);
+  Accelerometer.setUpdateInterval(20); // 50 Hz
+  Gyroscope.setUpdateInterval(20); // 50 Hz
 
   accelSubscription = Accelerometer.addListener(({ x, y, z }) => {
     onAccel({ t: Date.now() / 1000, x, y, z });

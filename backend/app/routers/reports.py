@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.auth import get_current_driver, get_current_insurer
 from app.database import get_db
-from app.models import Driver, Trip, TripScore, Event, Incident
+from app.models import Driver, Trip, TripScore, TripFeature, Event, Incident
+from app.pipeline import process_trip
 from app.schemas import (
     DriverSummaryResponse,
     TripListItem,
@@ -56,11 +57,13 @@ def _calculate_driver_score(db: Session, driver_id: str, days: int = 90) -> tupl
     cutoff = datetime.utcnow() - timedelta(days=days)
 
     results = (
-        db.query(Trip, TripScore, Trip.features)
+        db.query(Trip, TripScore, TripFeature)
         .join(TripScore, Trip.id == TripScore.trip_id)
+        .outerjoin(TripFeature, TripFeature.trip_id == Trip.id)
         .filter(Trip.driver_id == driver_id)
         .filter(Trip.created_at >= cutoff)
         .filter(Trip.status == "done")
+        .order_by(Trip.started_at)
         .all()
     )
 
@@ -68,7 +71,7 @@ def _calculate_driver_score(db: Session, driver_id: str, days: int = 90) -> tupl
     scoreable = [(t, s, f) for t, s, f in results if _is_scoreable(t) and not _is_expired_unknown(t)]
 
     if not scoreable:
-        return 50, 0.5, "C", 1.0, "stable", 0, 0.0
+        return 60, 0.5, "C", 1.0, "stable", 0, 0.0
 
     total_distance = 0.0
     weighted_score_sum = 0.0
@@ -81,7 +84,7 @@ def _calculate_driver_score(db: Session, driver_id: str, days: int = 90) -> tupl
         confidences.append(score.confidence)
 
     if total_distance == 0:
-        return 50, 0.5, "C", 1.0, "stable", len(scoreable), 0.0
+        return 60, 0.5, "C", 1.0, "stable", len(scoreable), 0.0
 
     avg_score = weighted_score_sum / total_distance
     avg_confidence = sum(confidences) / len(confidences)
@@ -213,6 +216,7 @@ def get_my_trips(
 def label_trip(
     trip_id: str,
     request: TripLabelRequest,
+    background_tasks: BackgroundTasks,
     driver: Driver = Depends(get_current_driver),
     db: Session = Depends(get_db),
 ):
@@ -229,6 +233,9 @@ def label_trip(
         status = "removed_from_score"
     elif request.trip_type == "driver":
         status = "added_to_score"
+        # An unscored trip labelled as driver needs processing to produce a score
+        if trip.score is None:
+            background_tasks.add_task(process_trip, trip_id)
 
     return TripLabelResponse(
         trip_id=trip.id,
@@ -311,20 +318,29 @@ def get_insurer_overview(
     cutoff = datetime.utcnow() - timedelta(days=90)
 
     total_drivers = db.query(func.count(Driver.id)).scalar()
-    total_trips = db.query(func.count(Trip.id)).filter(Trip.created_at >= cutoff).filter(Trip.status == "done").scalar()
 
-    tier_counts = (
-        db.query(TripScore.tier, func.count(TripScore.id))
-        .join(Trip, Trip.id == TripScore.trip_id)
+    # Only scoreable trips count toward trip totals and the tier distribution
+    rows = (
+        db.query(Trip, TripScore)
+        .join(TripScore, Trip.id == TripScore.trip_id)
         .filter(Trip.created_at >= cutoff)
-        .group_by(TripScore.tier)
+        .filter(Trip.status == "done")
         .all()
     )
+    scoreable = [(t, s) for t, s in rows if _is_scoreable(t)]
+    total_trips = len(scoreable)
 
-    tier_distribution = {tier: count for tier, count in tier_counts}
+    tier_distribution = {}
+    for _, score in scoreable:
+        tier_distribution[score.tier] = tier_distribution.get(score.tier, 0) + 1
 
-    multipliers = [tier_to_multiplier(tier) for tier in tier_distribution.keys()]
-    average_multiplier = sum(multipliers) / len(multipliers) if multipliers else 1.0
+    # Average multiplier weighted by the number of trips in each tier
+    total_scored = sum(tier_distribution.values())
+    average_multiplier = (
+        sum(tier_to_multiplier(tier) * count for tier, count in tier_distribution.items()) / total_scored
+        if total_scored > 0
+        else 1.0
+    )
 
     return InsurerOverviewResponse(
         total_drivers=total_drivers,

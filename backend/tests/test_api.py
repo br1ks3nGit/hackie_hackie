@@ -65,13 +65,12 @@ def test_consent_required_for_trip():
 def test_full_trip_flow():
     response = client.post("/v1/drivers/register", json={})
     data = response.json()
-    driver_id = data["driver_id"]
     api_key = data["api_key"]
 
     response = client.post(
         "/v1/consent",
         headers={"X-API-Key": api_key},
-        json={"driver_id": driver_id, "version": "1.0"},
+        json={"version": "1.0"},
     )
     assert response.status_code == 200
 

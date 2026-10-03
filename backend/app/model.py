@@ -1,9 +1,36 @@
 import os
 import pickle
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from app.config import get_settings
 
 settings = get_settings()
+
+
+# Flat feature vector order for the real model.
+# NOTE for the model team: train on features in this exact order.
+FEATURE_ORDER = [
+    "distance_km",
+    "duration_min",
+    "night_driving_share",
+    "harsh_brake_per_100km",
+    "harsh_accel_per_100km",
+    "sharp_corner_per_100km",
+    "speeding_per_100km",
+    "mean_speed_ms",
+    "max_speed_ms",
+    "speeding_time_share",
+]
+
+
+def _features_to_vector(features: Dict[str, Any]) -> List[float]:
+    """Flatten a pipeline feature dict into the FEATURE_ORDER vector."""
+    events_per_100km = features.get("events_per_100km", {}) or {}
+    flat = dict(features)
+    flat["harsh_brake_per_100km"] = events_per_100km.get("harsh_brake", 0.0)
+    flat["harsh_accel_per_100km"] = events_per_100km.get("harsh_accel", 0.0)
+    flat["sharp_corner_per_100km"] = events_per_100km.get("sharp_corner", 0.0)
+    flat["speeding_per_100km"] = events_per_100km.get("speeding", 0.0)
+    return [float(flat.get(name, 0.0)) for name in FEATURE_ORDER]
 
 
 class ModelError(Exception):
@@ -52,12 +79,17 @@ def predict(features: Dict[str, Any]) -> Dict[str, Any]:
 
     if _model is not None:
         try:
-            # Real model path
-            prediction = _model.predict([list(features.values())])[0]
-            confidence = float(prediction)
+            # Real model path: flat feature vector in FEATURE_ORDER
+            X = [_features_to_vector(features)]
+            if hasattr(_model, "predict_proba"):
+                confidence = float(_model.predict_proba(X)[0][1])
+            else:
+                confidence = float(_model.predict(X)[0])
             if not 0.0 <= confidence <= 1.0:
                 raise ModelPredictionError(f"Model returned invalid confidence: {confidence}")
             return {"confidence": confidence, "model_version": _model_version}
+        except ModelPredictionError:
+            raise
         except Exception as e:
             raise ModelPredictionError(f"Model prediction failed: {e}")
 

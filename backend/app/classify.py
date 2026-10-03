@@ -15,11 +15,6 @@ CONFIG = {
     # Transit: fraction of GPS points within this distance of a transit line
     "transit_match_distance_m": 30.0,
     "transit_match_ratio": 0.70,
-    # Bus-like stops: more than this many stops of 10-60s per 500m
-    "bus_stop_min_duration_s": 10.0,
-    "bus_stop_max_duration_s": 60.0,
-    "bus_stop_speed_threshold_ms": 1.0,
-    "bus_stops_per_500m_threshold": 1.0,
     # GPS gap that suggests underground transit
     "underground_gps_gap_s": 30.0,
     # Bluetooth: fraction of trip with car_connected to classify as driver
@@ -59,14 +54,6 @@ def _load_transit_lines() -> List[Dict[str, Any]]:
 
     _transit_lines_cache = lines
     return lines
-
-
-def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    R = 6371000
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 def _point_to_segment_distance_m(
@@ -112,18 +99,59 @@ def _min_distance_to_line(lat: float, lon: float, line_coords: List[List[float]]
     return min_dist
 
 
+def _min_distances_to_line(lats: np.ndarray, lons: np.ndarray, line_coords: List[List[float]]) -> np.ndarray:
+    """
+    Vectorized minimum distance (meters) from each GPS point to a polyline.
+    Broadcasts point-to-segment distance over all points x all segments at once.
+    """
+    coords = np.asarray(line_coords, dtype=float)  # [[lon, lat], ...]
+    ax = coords[:-1, 0]
+    ay = coords[:-1, 1]
+    bx = coords[1:, 0]
+    by = coords[1:, 1]
+
+    # Approximate local coordinates (good enough for 30m checks in HK)
+    lat_center = (ay + by) / 2  # per segment
+    m_per_deg_lat = 111320.0
+    m_per_deg_lon = 111320.0 * np.cos(np.radians(lat_center))  # per segment
+
+    # Broadcast: points (P,1) x segments (1,S) -> (P,S)
+    px_m = lons[:, None] * m_per_deg_lon[None, :]
+    py_m = lats[:, None] * m_per_deg_lat
+    ax_m = ax[None, :] * m_per_deg_lon[None, :]
+    ay_m = ay[None, :] * m_per_deg_lat
+    bx_m = bx[None, :] * m_per_deg_lon[None, :]
+    by_m = by[None, :] * m_per_deg_lat
+
+    dx = bx_m - ax_m
+    dy = by_m - ay_m
+    seg_len_sq = dx * dx + dy * dy
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = ((px_m - ax_m) * dx + (py_m - ay_m) * dy) / seg_len_sq
+    # Degenerate segments collapse to their start point
+    t = np.where(seg_len_sq == 0, 0.0, t)
+    t = np.clip(t, 0.0, 1.0)
+
+    closest_x = ax_m + t * dx
+    closest_y = ay_m + t * dy
+    dist = np.sqrt((px_m - closest_x) ** 2 + (py_m - closest_y) ** 2)
+
+    return dist.min(axis=1)
+
+
 def _check_transit_route_match(gps_df: pd.DataFrame) -> Tuple[bool, Optional[str]]:
     """Check if >70% of GPS points are within 30m of a transit line."""
     lines = _load_transit_lines()
     if not lines or len(gps_df) == 0:
         return False, None
 
+    lats = gps_df["lat"].values.astype(float)
+    lons = gps_df["lon"].values.astype(float)
+
     for line in lines:
-        match_count = 0
-        for _, row in gps_df.iterrows():
-            dist = _min_distance_to_line(row["lat"], row["lon"], line["coordinates"])
-            if dist <= CONFIG["transit_match_distance_m"]:
-                match_count += 1
+        dists = _min_distances_to_line(lats, lons, line["coordinates"])
+        match_count = int(np.sum(dists <= CONFIG["transit_match_distance_m"]))
 
         ratio = match_count / len(gps_df)
         if ratio >= CONFIG["transit_match_ratio"]:
@@ -164,46 +192,6 @@ def _check_underground_gps_gaps(gps_df: pd.DataFrame) -> bool:
                 return True
 
     return False
-
-
-def _check_bus_like_stops(gps_df: pd.DataFrame) -> bool:
-    """Detect bus-like stop patterns: multiple 10-60s stops per 500m."""
-    if len(gps_df) < 10:
-        return False
-
-    speeds = gps_df["speed"].fillna(0).values
-    times = gps_df["t"].values
-
-    stops = []
-    in_stop = False
-    stop_start = None
-
-    for i in range(len(speeds)):
-        if speeds[i] < CONFIG["bus_stop_speed_threshold_ms"] and not in_stop:
-            in_stop = True
-            stop_start = times[i]
-        elif speeds[i] >= CONFIG["bus_stop_speed_threshold_ms"] and in_stop:
-            in_stop = False
-            duration_s = (times[i] - stop_start) / 1000.0
-            if CONFIG["bus_stop_min_duration_s"] <= duration_s <= CONFIG["bus_stop_max_duration_s"]:
-                stops.append({"time": stop_start, "lat": gps_df.iloc[i]["lat"], "lon": gps_df.iloc[i]["lon"]})
-
-    if len(stops) < 2:
-        return False
-
-    # Calculate total distance
-    total_distance_m = 0
-    for i in range(1, len(gps_df)):
-        total_distance_m += _haversine_m(
-            gps_df.iloc[i - 1]["lat"], gps_df.iloc[i - 1]["lon"],
-            gps_df.iloc[i]["lat"], gps_df.iloc[i]["lon"],
-        )
-
-    if total_distance_m < 100:
-        return False
-
-    stops_per_500m = len(stops) / (total_distance_m / 500.0)
-    return stops_per_500m > CONFIG["bus_stops_per_500m_threshold"]
 
 
 def _calculate_driver_likelihood(imu_df: pd.DataFrame) -> float:
@@ -259,14 +247,6 @@ def classify_trip(
             "label_source": "rules",
             "driver_likelihood": None,
             "transit_line": "underground (GPS gap)",
-        }
-
-    if _check_bus_like_stops(gps_df):
-        return {
-            "trip_type": "transit",
-            "label_source": "rules",
-            "driver_likelihood": None,
-            "transit_line": "bus-like stops",
         }
 
     # Rule 2: Bluetooth driver detection

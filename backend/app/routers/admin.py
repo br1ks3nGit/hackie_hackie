@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_driver, get_current_insurer
 from app.config import get_settings
 from app.database import get_db
-from app.models import Driver, Trip, TripChunk, Event, TripFeature, TripScore
+from app.models import Driver, Consent, Trip, TripChunk, Event, TripFeature, TripScore, Incident
 from app.schemas import ReprocessResponse, DeleteDriverResponse
 from app.pipeline import process_trip
 
@@ -24,10 +24,11 @@ def reprocess_trip(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    # Delete old results
+    # Delete old results (incidents would duplicate crash detections on reprocess)
     db.query(Event).filter(Event.trip_id == trip_id).delete()
     db.query(TripFeature).filter(TripFeature.trip_id == trip_id).delete()
     db.query(TripScore).filter(TripScore.trip_id == trip_id).delete()
+    db.query(Incident).filter(Incident.trip_id == trip_id).delete()
 
     trip.status = "processing"
     trip.failure_reason = None
@@ -67,6 +68,8 @@ def delete_my_data(
     db.query(TripChunk).filter(TripChunk.trip_id.in_(
         db.query(Trip.id).filter(Trip.driver_id == driver.id)
     )).delete(synchronize_session=False)
+    db.query(Incident).filter(Incident.driver_id == driver.id).delete(synchronize_session=False)
+    db.query(Consent).filter(Consent.driver_id == driver.id).delete(synchronize_session=False)
     db.query(Trip).filter(Trip.driver_id == driver.id).delete(synchronize_session=False)
     db.query(Driver).filter(Driver.id == driver.id).delete(synchronize_session=False)
 

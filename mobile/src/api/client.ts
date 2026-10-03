@@ -104,10 +104,10 @@ export async function registerDriver(): Promise<DriverRegisterResponse> {
   return request('/drivers/register', { method: 'POST' });
 }
 
-export async function giveConsent(driverId: string, apiKey: string, version: string = '1.0'): Promise<void> {
+export async function giveConsent(apiKey: string, version: string = '1.0'): Promise<void> {
   await request('/consent', {
     method: 'POST',
-    body: JSON.stringify({ driver_id: driverId, version }),
+    body: JSON.stringify({ version }),
   }, apiKey);
 }
 

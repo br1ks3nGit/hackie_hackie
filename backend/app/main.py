@@ -23,12 +23,8 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created")
 
-    try:
-        load_model()
-        logger.info("Model loaded successfully")
-    except Exception as e:
-        logger.error(f"Failed to load model: {e}")
-        # Continue with placeholder model
+    load_model()
+    logger.info("Model loaded successfully")
 
     yield
 

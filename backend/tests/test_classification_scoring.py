@@ -47,7 +47,7 @@ def _register_and_consent():
     client.post(
         "/v1/consent",
         headers={"X-API-Key": api_key},
-        json={"driver_id": driver_id, "version": "1.0"},
+        json={"version": "1.0"},
     )
     return driver_id, api_key
 
@@ -114,14 +114,18 @@ def test_label_trip_as_driver_adds_to_score():
     }]
     trip_id = _upload_trip(api_key, chunks)
 
-    response = client.post(
-        f"/v1/me/trips/{trip_id}/label",
-        headers={"X-API-Key": api_key},
-        json={"trip_type": "driver"},
-    )
-    assert response.status_code == 200
-    assert response.json()["trip_type"] == "driver"
-    assert response.json()["status"] == "added_to_score"
+    # Labelling an unscored trip as driver schedules processing; mock it out
+    # because the pipeline runs against the default DB, not the test DB
+    with unittest.mock.patch("app.routers.reports.BackgroundTasks.add_task") as mock_add_task:
+        response = client.post(
+            f"/v1/me/trips/{trip_id}/label",
+            headers={"X-API-Key": api_key},
+            json={"trip_type": "driver"},
+        )
+        assert response.status_code == 200
+        assert response.json()["trip_type"] == "driver"
+        assert response.json()["status"] == "added_to_score"
+        mock_add_task.assert_called_once()
 
 
 def test_trip_list_includes_trip_type():

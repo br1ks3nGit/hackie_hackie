@@ -57,7 +57,7 @@ export default function App() {
       await AsyncStorage.setItem(STORAGE_KEYS.API_KEY, response.api_key);
 
       // Give consent
-      await giveConsent(response.driver_id, response.api_key);
+      await giveConsent(response.api_key);
       await refreshSummary(response.api_key);
     } catch (err) {
       console.error('Failed to initialize driver', err);
@@ -108,6 +108,8 @@ export default function App() {
     if (recording) {
       stopSensors();
       setRecording(false);
+      // forceEnd awaits the final chunk upload (with retries); onTripEnd —
+      // which sends /end — fires only after the last chunk is acknowledged
       await detectorRef.current?.forceEnd();
       return;
     }

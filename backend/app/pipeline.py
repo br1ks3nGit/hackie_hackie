@@ -2,7 +2,6 @@ import gzip
 import json
 import logging
 import os
-from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 import pandas as pd
@@ -34,9 +33,11 @@ def _load_chunk(trip_id: str, seq: int) -> Dict[str, Any]:
         return json.load(f)
 
 
-def _load_all_chunks(trip_id: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def _load_all_chunks(trip_id: str) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[float]]:
     imu_rows = []
     gps_rows = []
+    bt_connected = 0
+    bt_total = 0
 
     trip_dir = os.path.join(settings.data_dir, trip_id)
     if not os.path.exists(trip_dir):
@@ -51,6 +52,10 @@ def _load_all_chunks(trip_id: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
         chunk = _load_chunk(trip_id, seq)
         imu_rows.extend(chunk.get("imu", []))
         gps_rows.extend(chunk.get("gps", []))
+        if chunk.get("car_connected") is not None:
+            bt_total += 1
+            if chunk.get("car_connected"):
+                bt_connected += 1
 
     if not imu_rows:
         raise PipelineError("No IMU data found")
@@ -68,7 +73,10 @@ def _load_all_chunks(trip_id: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     imu_df = imu_df.drop_duplicates(subset=["t"]).sort_values("t").reset_index(drop=True)
     gps_df = gps_df.drop_duplicates(subset=["t"]).sort_values("t").reset_index(drop=True)
 
-    return imu_df, gps_df
+    # Fraction of chunks reporting car Bluetooth connection
+    bluetooth_connected_ratio = (bt_connected / bt_total) if bt_total > 0 else None
+
+    return imu_df, gps_df, bluetooth_connected_ratio
 
 
 def _quality_check(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> None:
@@ -128,18 +136,54 @@ def _resample_imu(imu_df: pd.DataFrame, target_hz: float = 50.0) -> pd.DataFrame
     return new_df
 
 
+def _remove_gravity(imu_df: pd.DataFrame, window_s: float = 10.0, fs: float = 50.0) -> pd.DataFrame:
+    """
+    Remove gravity/DC offset by subtracting a rolling median from each raw axis.
+    Orientation-independent: works however the phone is mounted.
+    """
+    imu_df = imu_df.copy()
+    window = int(fs * window_s)
+    for col in ["ax", "ay", "az", "gx", "gy", "gz"]:
+        if col in imu_df.columns:
+            rolling_median = imu_df[col].rolling(window=window, center=True, min_periods=1).median()
+            imu_df[col] = imu_df[col] - rolling_median
+    return imu_df
+
+
 def _rotate_to_car_frame(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Simplified axis rotation: assume phone is roughly aligned with car.
-    In a full implementation, estimate gravity with low-pass filter and align axes.
-    For hackathon, we use the phone axes directly but note the limitation.
+    Derive car-frame acceleration channels (all in g, matching the event thresholds):
+    - accel_forward: dv/dt from GPS speed over ~2s windows, interpolated onto the IMU timeline
+    - accel_lateral: yaw rate (gravity-free gz, rad/s) x GPS speed (m/s)
+    - accel_vertical: gravity-free az
     """
-    # TODO: Implement proper axis rotation with gravity estimation
-    # For now, assume phone z-axis is vertical and y-axis is forward
     imu_df = imu_df.copy()
-    imu_df["accel_forward"] = imu_df["ay"]
-    imu_df["accel_lateral"] = imu_df["ax"]
-    imu_df["accel_vertical"] = imu_df["az"]
+
+    gps = gps_df.copy()
+    gps["speed"] = gps["speed"].fillna(0)
+    gps = gps.sort_values("t")
+    imu_t = imu_df["t"].values.astype(float)
+
+    if len(gps) >= 2:
+        gps_t = gps["t"].values.astype(float)
+        speeds = gps["speed"].values.astype(float)
+
+        # dv/dt over a ~2s window centered on each GPS point (m/s^2)
+        window_s = 2.0
+        half_ms = window_s / 2.0 * 1000.0
+        dv = np.interp(gps_t + half_ms, gps_t, speeds) - np.interp(gps_t - half_ms, gps_t, speeds)
+        accel_forward_gps = dv / window_s
+
+        accel_forward_ms2 = np.interp(imu_t, gps_t, accel_forward_gps)
+        speed_on_imu = np.interp(imu_t, gps_t, speeds)
+    else:
+        accel_forward_ms2 = np.zeros(len(imu_df))
+        speed_on_imu = np.zeros(len(imu_df))
+
+    # Convert m/s^2 to g so the g-unit thresholds apply
+    imu_df["accel_forward"] = accel_forward_ms2 / 9.81
+    imu_df["accel_lateral"] = imu_df["gz"].values * speed_on_imu / 9.81
+    imu_df["accel_vertical"] = imu_df["az"].values
     return imu_df
 
 
@@ -156,6 +200,11 @@ def _apply_lowpass_filter(imu_df: pd.DataFrame, cutoff_hz: float = 5.0, fs: floa
     return imu_df
 
 
+# 50 km/h urban HK default in m/s.
+# TODO: use the OSM speed limit for the road + 10 km/h instead of a fixed value.
+SPEEDING_THRESHOLD_MS = 13.9
+
+
 def _detect_events(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str, Any]]:
     events = []
 
@@ -163,7 +212,6 @@ def _detect_events(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str,
     harsh_brake_threshold = -0.4
     harsh_accel_threshold = 0.3
     sharp_corner_threshold = 0.35
-    speeding_threshold_ms = 16.67  # 60 km/h in m/s
 
     # Merge GPS speed into IMU timeline for event detection
     # Use nearest GPS point for each IMU sample
@@ -191,11 +239,39 @@ def _detect_events(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str,
     corner_events = _find_peaks(imu_df, corner_mask, "sharp_corner", gps_df)
     events.extend(corner_events)
 
-    # Detect speeding
-    speeding_mask = nearest_speeds > speeding_threshold_ms
-    if np.any(speeding_mask):
-        speeding_df = imu_df[speeding_mask]
-        for _, row in speeding_df.iterrows():
+    # Detect speeding: merge consecutive speeding samples into runs and emit
+    # ONE event per run longer than 10s (time/lat/lon of the run start)
+    speeding_mask = nearest_speeds > SPEEDING_THRESHOLD_MS
+    events.extend(_find_speeding_runs(imu_df, speeding_mask, gps_df))
+
+    return events
+
+
+def _find_speeding_runs(
+    imu_df: pd.DataFrame,
+    mask,
+    gps_df: pd.DataFrame,
+    min_duration_s: float = 10.0,
+) -> List[Dict[str, Any]]:
+    """Merge consecutive speeding samples into runs; one event per run > min_duration_s."""
+    events = []
+    times = imu_df["t"].values
+    mask = np.asarray(mask)
+    n = len(mask)
+
+    i = 0
+    while i < n:
+        if not mask[i]:
+            i += 1
+            continue
+        start = i
+        while i + 1 < n and mask[i + 1]:
+            i += 1
+        end = i
+
+        duration_s = (times[end] - times[start]) / 1000.0
+        if duration_s > min_duration_s:
+            row = imu_df.iloc[start]
             nearest_gps = _find_nearest_gps(row["t"], gps_df)
             events.append({
                 "type": "speeding",
@@ -204,6 +280,7 @@ def _detect_events(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str,
                 "lat": nearest_gps["lat"],
                 "lon": nearest_gps["lon"],
             })
+        i += 1
 
     return events
 
@@ -238,6 +315,18 @@ def _find_peaks(imu_df: pd.DataFrame, mask: pd.Series, event_type: str, gps_df: 
                 "lon": nearest_gps["lon"],
             })
 
+    # Flush an event still open at the end of the array
+    if in_event and peak_idx is not None:
+        row = imu_df.iloc[peak_idx]
+        nearest_gps = _find_nearest_gps(row["t"], gps_df)
+        events.append({
+            "type": event_type,
+            "time": row["time"],
+            "peak_g": float(abs(peak_val)),
+            "lat": nearest_gps["lat"],
+            "lon": nearest_gps["lon"],
+        })
+
     return events
 
 
@@ -253,9 +342,10 @@ def _calculate_features(imu_df: pd.DataFrame, gps_df: pd.DataFrame, events: List
     duration_s = (imu_df["t"].max() - imu_df["t"].min()) / 1000.0
     duration_min = duration_s / 60.0
 
-    # Night driving share (23:00-05:00)
+    # Night driving share (23:00-05:00 Asia/Hong_Kong); imu time is UTC-naive
     night_hours = set(range(23, 24)) | set(range(0, 6))
-    night_samples = imu_df[imu_df["time"].dt.hour.isin(night_hours)]
+    hk_time = imu_df["time"].dt.tz_localize("UTC").dt.tz_convert("Asia/Hong_Kong")
+    night_samples = imu_df[hk_time.dt.hour.isin(night_hours)]
     night_share = len(night_samples) / len(imu_df) if len(imu_df) > 0 else 0
 
     # Events per 100 km
@@ -268,7 +358,19 @@ def _calculate_features(imu_df: pd.DataFrame, gps_df: pd.DataFrame, events: List
     speeds = gps_df["speed"].fillna(0)
     mean_speed = float(speeds.mean())
     max_speed = float(speeds.max())
-    speeding_share = float((speeds > 16.67).mean())  # > 60 km/h
+    speeding_share = float((speeds > SPEEDING_THRESHOLD_MS).mean())
+
+    # Downsampled route for the trip detail endpoint (up to ~100 points)
+    route = []
+    if len(gps_df) > 0:
+        step = max(1, (len(gps_df) + 99) // 100)
+        for _, row in gps_df.iloc[::step].iterrows():
+            route.append({
+                "t": int(row["t"]),
+                "lat": float(row["lat"]),
+                "lon": float(row["lon"]),
+                "speed": float(row["speed"]) if pd.notna(row["speed"]) else None,
+            })
 
     return {
         "distance_km": round(distance_km, 2),
@@ -278,6 +380,7 @@ def _calculate_features(imu_df: pd.DataFrame, gps_df: pd.DataFrame, events: List
         "mean_speed_ms": round(mean_speed, 2),
         "max_speed_ms": round(max_speed, 2),
         "speeding_time_share": round(speeding_share, 4),
+        "route": route,
     }
 
 
@@ -294,11 +397,18 @@ def _detect_crashes(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str
     """
     crashes = []
 
-    # Compute total acceleration magnitude
+    # Compute total acceleration magnitude from the gravity-free raw axes so a
+    # real impact spike shows up at full rate (gravity-free magnitude ~ 0 normally).
+    # Fall back to the derived channels for callers that pass those directly.
+    if {"ax", "ay", "az"}.issubset(imu_df.columns):
+        mag_cols = ("ax", "ay", "az")
+    else:
+        mag_cols = ("accel_forward", "accel_lateral", "accel_vertical")
+
     accel_mag = np.sqrt(
-        imu_df["accel_forward"] ** 2 +
-        imu_df["accel_lateral"] ** 2 +
-        imu_df["accel_vertical"] ** 2
+        imu_df[mag_cols[0]] ** 2 +
+        imu_df[mag_cols[1]] ** 2 +
+        imu_df[mag_cols[2]] ** 2
     )
 
     # Find peaks above threshold
@@ -341,9 +451,9 @@ def _detect_crashes(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str
             continue
 
         post_accel_mag = np.sqrt(
-            imu_after["accel_forward"] ** 2 +
-            imu_after["accel_lateral"] ** 2 +
-            imu_after["accel_vertical"] ** 2
+            imu_after[mag_cols[0]] ** 2 +
+            imu_after[mag_cols[1]] ** 2 +
+            imu_after[mag_cols[2]] ** 2
         )
         # Still = very low variance in acceleration
         if post_accel_mag.std() > 0.5:
@@ -386,31 +496,43 @@ def process_trip(trip_id: str) -> None:
         trip.status = "processing"
         db.commit()
 
-        # Load and validate data
-        imu_df, gps_df = _load_all_chunks(trip_id)
-        _quality_check(imu_df, gps_df)
+        # Load data (also derives the bluetooth ratio from chunk metadata)
+        imu_df, gps_df, bluetooth_connected_ratio = _load_all_chunks(trip_id)
+        trip.bluetooth_connected_ratio = bluetooth_connected_ratio
 
-        # Classify trip type (transit, driver, unknown)
-        classification = classify_trip(
-            gps_df=gps_df,
-            imu_df=imu_df,
-            bluetooth_connected_ratio=trip.bluetooth_connected_ratio,
-        )
-        trip.trip_type = classification["trip_type"]
-        trip.label_source = classification["label_source"]
-        trip.driver_likelihood = classification["driver_likelihood"]
-        trip.transit_line = classification["transit_line"]
+        # User labels are never overwritten by auto-classification
+        if trip.label_source == "user":
+            classification = {
+                "trip_type": trip.trip_type,
+                "label_source": trip.label_source,
+                "driver_likelihood": trip.driver_likelihood,
+                "transit_line": trip.transit_line,
+            }
+        else:
+            # Classify BEFORE the quality check so underground-MTR GPS gaps
+            # are recognised as transit instead of failing the trip
+            classification = classify_trip(
+                gps_df=gps_df,
+                imu_df=imu_df,
+                bluetooth_connected_ratio=bluetooth_connected_ratio,
+            )
+            trip.trip_type = classification["trip_type"]
+            trip.label_source = classification["label_source"]
+            trip.driver_likelihood = classification["driver_likelihood"]
+            trip.transit_line = classification["transit_line"]
 
-        # Transit trips are saved but not scored
-        if classification["trip_type"] == "transit":
+        # Transit and user-labelled passenger trips are saved but not scored
+        if classification["trip_type"] in ("transit", "passenger"):
             trip.status = "done"
-            trip.ended_at = datetime.utcnow()
             db.commit()
-            logger.info(f"Trip {trip_id} classified as transit ({classification['transit_line']}), not scored")
+            logger.info(f"Trip {trip_id} classified as {classification['trip_type']}, not scored")
             return
 
-        # Process signals
+        _quality_check(imu_df, gps_df)
+
+        # Process signals: resample -> gravity removal -> car-frame -> low-pass
         imu_df = _resample_imu(imu_df)
+        imu_df = _remove_gravity(imu_df)
         imu_df = _rotate_to_car_frame(imu_df, gps_df)
         imu_df = _apply_lowpass_filter(imu_df)
 
@@ -467,9 +589,8 @@ def process_trip(trip_id: str) -> None:
         )
         db.add(trip_score)
 
-        # Mark trip as done
+        # Mark trip as done (ended_at was set by the /end endpoint)
         trip.status = "done"
-        trip.ended_at = datetime.utcnow()
         db.commit()
 
         logger.info(f"Trip {trip_id} processed successfully: score={score}, tier={tier}, type={classification['trip_type']}")

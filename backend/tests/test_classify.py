@@ -3,7 +3,6 @@ import pandas as pd
 from app.classify import (
     classify_trip,
     _check_transit_route_match,
-    _check_bus_like_stops,
     _calculate_driver_likelihood,
     CONFIG,
 )
@@ -112,45 +111,3 @@ def test_driver_likelihood_mounted_phone():
 
     assert likelihood_stable > likelihood_unstable
     assert likelihood_stable > CONFIG["likelihood_base"]
-
-
-def test_bus_like_stops():
-    """Multiple 10-60s stops should trigger bus detection."""
-    base_t = 1759986000000
-    times = []
-    lats = []
-    lons = []
-    speeds = []
-
-    t = base_t
-    lat, lon = 22.30, 114.17
-
-    # 3 short driving segments with 3 stops between them
-    for segment in range(4):
-        # Drive for 20s
-        for i in range(20):
-            times.append(t)
-            lats.append(lat + segment * 0.002 + i * 0.0001)
-            lons.append(lon + segment * 0.001)
-            speeds.append(10.0)
-            t += 1000
-
-        # Stop for 15s (bus stop) — except after last segment
-        if segment < 3:
-            for i in range(15):
-                times.append(t)
-                lats.append(lat + segment * 0.002 + 0.002)
-                lons.append(lon + segment * 0.001)
-                speeds.append(0.0)
-                t += 1000
-
-    gps_df = pd.DataFrame({
-        "t": times,
-        "time": pd.to_datetime(times, unit="ms"),
-        "lat": lats,
-        "lon": lons,
-        "speed": speeds,
-    })
-
-    is_bus = _check_bus_like_stops(gps_df)
-    assert is_bus
