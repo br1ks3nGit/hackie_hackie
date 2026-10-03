@@ -65,11 +65,12 @@ Open (the director escalates these when the increment needs them):
 - [x] F1 Basic staff login (env credentials, hashed password), cookie session, CSRF, base layout,
       UnoCSS build.
 - [x] F2 Overview page: totals, tier distribution, average multiplier (HTMX partials).
-- [x] F3 Drivers list with filter, sort, pagination; driver detail. (Trip rows link to `/dashboard/trips/{id}`, which 404s until F4 lands.)
-- [ ] F4 Trip detail with Leaflet route and event markers.
+- [x] F3 Drivers list with filter, sort, pagination; driver detail.
+- [x] F4 Trip detail with Leaflet route and event markers.
 - [ ] F5 Incidents page.
 - [ ] Later: dashboard hardening: login rate limiting/lockout, server-side session revocation,
       security headers (CSP).
+- [ ] Later: row-to-marker highlight on hover and focus (F4 follow-up).
 
 ## Phase G - Docs
 - [ ] G1 Rewrite `docs/handoff.md` and `contracts/` from the generated OpenAPI contract.

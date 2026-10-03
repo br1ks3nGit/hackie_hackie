@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% from "components/badges.html" import tier_badge %}
+{% block title %}Trip {{ t.trip_id }} - DriveScore Insurer{% endblock %}
+{% block head %}
+  {% if t.route or map_data.events or map_data.crashes %}
+  <link rel="stylesheet" href="/static/vendor/leaflet-1.9.4.css">
+  <script src="/static/vendor/leaflet-1.9.4.min.js" defer></script>
+  <script src="/static/js/trip_map.js" defer></script>
+  {% endif %}
+{% endblock %}
+{% block content %}
+{%- set event_labels = {"harsh_brake": "Harsh brake", "harsh_accel": "Harsh acceleration", "sharp_corner": "Sharp corner", "speeding": "Speeding"} -%}
+{%- set event_glyphs = {"harsh_brake": "Br", "harsh_accel": "Ac", "sharp_corner": "Co", "speeding": "Sp"} -%}
+{%- set event_swatches = {"harsh_brake": "bg-event-harsh-brake", "harsh_accel": "bg-event-harsh-accel", "sharp_corner": "bg-event-sharp-corner", "speeding": "bg-event-speeding"} -%}
+{%- set type_labels = {"driver": "Driver", "passenger": "Passenger", "transit": "Transit", "unknown": "Unknown"} -%}
+{%- set source_labels = {"user": "Confirmed by driver", "bluetooth": "Car Bluetooth", "rules": "Rules"} -%}
+{%- set status_pills = {"done": "bg-success-soft text-success-ink", "failed": "bg-danger-soft text-danger-ink", "uploading": "bg-info-soft text-info-ink", "processing": "bg-info-soft text-info-ink"} -%}
+{%- set confirm_labels = {"ok": "Driver OK", "help_needed": "Help needed", "no_response": "No response"} -%}
+{%- set has_map = t.route or map_data.events or map_data.crashes -%}
+<nav aria-label="Breadcrumb" class="text-sm"><a href="/dashboard/drivers/{{ t.driver_id }}" class="text-primary underline kbd-focus rounded-sm">Driver {{ t.driver_id }}</a></nav>
+<div class="mt-2 flex flex-wrap items-center gap-3">
+  <h1 class="text-2xl font-bold text-text">Trip <span class="font-mono break-all">{{ t.trip_id }}</span></h1>
+  <span class="pill {{ status_pills.get(t.status, 'bg-surface-muted text-text-muted') }}">{{ t.status|capitalize }}</span>
+  <span class="text-sm text-text-muted">{{ type_labels.get(t.trip_type, "Unclassified") }}{% if t.label_source %} ({{ source_labels.get(t.label_source, t.label_source) }}){% endif %}</span>
+</div>
+<p class="mt-1 text-sm text-text-muted">
+  <time datetime="{{ t.started_at.isoformat() }}">{{ t.started_at|hk_time }}</time> HKT
+  {%- if t.ended_at %} to <time datetime="{{ t.ended_at.isoformat() }}">{{ t.ended_at|hk_time }}</time> HKT{% endif %}
+  &middot; {% if t.distance_km is not none %}{{ "%.2f"|format(t.distance_km) }} km{% else %}distance n/a{% endif %}
+  &middot; {% if t.duration_min is not none %}{{ "%.1f"|format(t.duration_min) }} min{% else %}duration n/a{% endif %}
+</p>
+
+{% if t.status == "failed" and t.failure_reason %}
+<div role="alert" class="mt-4 rounded-lg border border-danger bg-danger-soft p-4 text-sm text-danger-ink">{{ t.failure_reason }}</div>
+{% endif %}
+
+<dl class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <div class="card">
+    <dt class="text-sm text-text-muted">Score</dt>
+    <dd class="mt-1 text-3xl font-bold text-text tabular-nums">{% if t.score is none %}-<span class="sr-only">Not scored</span>{% else %}{{ t.score }}{% endif %}</dd>
+  </div>
+  <div class="card">
+    <dt class="text-sm text-text-muted">Tier</dt>
+    <dd class="mt-1">{{ tier_badge(t.tier, "lg") }}</dd>
+  </div>
+  <div class="card">
+    <dt class="text-sm text-text-muted">Confidence</dt>
+    <dd class="mt-1 text-3xl font-bold text-text tabular-nums">{% if t.confidence is none %}-{% else %}{{ (t.confidence * 100)|round|int }}%{% endif %}</dd>
+  </div>
+</dl>
+{% if t.model_version %}<p class="mt-2 text-xs text-text-muted">Model version: <span class="font-mono">{{ t.model_version }}</span></p>{% endif %}
+
+<section class="card mt-4" aria-labelledby="why-heading">
+  <h2 id="why-heading" class="text-lg font-semibold text-text">Why this score</h2>
+  <p class="mt-2 text-base text-text">{{ t.explanation or "No explanation available." }}</p>
+</section>
+
+<section class="card mt-4" aria-labelledby="map-heading">
+  <h2 id="map-heading" class="text-lg font-semibold text-text">Route</h2>
+  {% if has_map %}
+  <a href="#events-heading" class="mt-2 inline-block text-sm text-primary underline kbd-focus rounded-sm">Skip map, go to events table</a>
+  <p class="mt-1 text-sm text-text-muted">The events table below lists the same events.</p>
+  <div x-data="tripMap" class="mt-3">
+    <div x-ref="map" class="h-64 md:h-96 rounded-lg border border-border" role="region" aria-label="Trip route map"></div>
+    <script type="application/json" id="trip-map-data">{{ map_data|tojson }}</script>
+  </div>
+  <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm list-none p-0" aria-label="Map legend">
+    <li class="flex items-center gap-2"><span class="inline-block h-1 w-5 rounded bg-primary" aria-hidden="true"></span>Route</li>
+    {% for key, label in event_labels.items() %}
+    <li class="flex items-center gap-2"><span class="inline-flex h-5 w-5 items-center justify-center rounded-full text-white text-xs font-bold {{ event_swatches[key] }}" aria-hidden="true">{{ event_glyphs[key] }}</span>{{ label }}</li>
+    {% endfor %}
+    <li class="flex items-center gap-2"><span class="inline-flex h-5 w-5 items-center justify-center rounded-sm text-white text-xs font-bold bg-event-crash" aria-hidden="true">!</span>Crash</li>
+  </ul>
+  {% else %}
+  <p class="mt-3 text-sm text-text-muted">No route recorded</p>
+  {% endif %}
+</section>
+
+<section class="mt-4" aria-labelledby="events-heading">
+  <h2 id="events-heading" class="text-xl font-semibold text-text">Events</h2>
+  {% if t.events %}
+  <div class="mt-2 overflow-x-auto rounded-lg border border-border bg-surface" tabindex="0" role="region" aria-label="Trip events">
+    <table class="w-full text-sm text-left">
+      <caption class="sr-only">Harsh events on this trip, in time order, times in Hong Kong time</caption>
+      <thead class="bg-surface-muted text-text-muted font-medium">
+        <tr>
+          <th scope="col" class="px-4 py-3">Time (HKT)</th>
+          <th scope="col" class="px-4 py-3">Type</th>
+          <th scope="col" class="px-4 py-3 text-right">Peak g</th>
+          <th scope="col" class="px-4 py-3">Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in t.events %}
+        <tr class="hover:bg-surface-muted">
+          <td class="px-4 py-3 border-t border-border"><time datetime="{{ e.time.isoformat() }}">{{ e.time|hk_time }}</time></td>
+          <td class="px-4 py-3 border-t border-border"><span class="inline-flex items-center gap-2"><span class="inline-flex h-5 w-5 items-center justify-center rounded-full text-white text-xs font-bold {{ event_swatches.get(e.type, 'bg-text-muted') }}" aria-hidden="true">{{ event_glyphs.get(e.type, "?") }}</span>{{ event_labels.get(e.type, e.type) }}</span></td>
+          <td class="px-4 py-3 border-t border-border text-right tabular-nums font-mono">{% if e.peak_g is none %}-{% else %}{{ "%.2f"|format(e.peak_g) }} g{% endif %}</td>
+          <td class="px-4 py-3 border-t border-border font-mono">{% if e.lat is none or e.lon is none %}-{% else %}{{ "%.5f"|format(e.lat) }}, {{ "%.5f"|format(e.lon) }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card mt-2"><p class="text-sm text-text-muted">No harsh events</p></div>
+  {% endif %}
+</section>
+
+{% if t.crashes %}
+<section class="mt-4" aria-labelledby="crashes-heading">
+  <h2 id="crashes-heading" class="text-xl font-semibold text-text">Crash incidents</h2>
+  <ul class="card mt-2 flex flex-col gap-2 text-sm list-none">
+    {% for c in t.crashes %}
+    <li class="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <span class="inline-flex h-5 w-5 items-center justify-center rounded-sm text-white text-xs font-bold bg-event-crash" aria-hidden="true">!</span>
+      <time datetime="{{ c.time.isoformat() }}">{{ c.time|hk_time }}</time> HKT
+      <span class="font-mono">{% if c.peak_g is none %}-{% else %}{{ "%.2f"|format(c.peak_g) }} g{% endif %}</span>
+      <span class="font-mono">{% if c.lat is none or c.lon is none %}no location{% else %}{{ "%.5f"|format(c.lat) }}, {{ "%.5f"|format(c.lon) }}{% endif %}</span>
+      <span>{{ confirm_labels.get(c.confirmed, "Not confirmed") }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}
