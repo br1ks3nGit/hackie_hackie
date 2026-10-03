@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import Driver, Trip, TripScore
 from app.pipeline import process_trip
 from app.schemas import (
+    DeleteDriverResponse,
     DriverSummaryResponse,
     EventResponse,
     TripDetailResponse,
@@ -13,6 +14,7 @@ from app.schemas import (
     TripLabelResponse,
     TripListItem,
 )
+from app.services.erasure import delete_driver_data
 from app.services.scoring import calculate_driver_score, generate_explanation, is_expired_unknown
 
 router = APIRouter()
@@ -149,3 +151,12 @@ def get_my_trip_detail(
         ],
         explanation=explanation,
     )
+
+
+@router.delete("/me", response_model=DeleteDriverResponse)
+def delete_my_data(
+    driver: Driver = Depends(get_current_driver),
+    db: Session = Depends(get_db),
+):
+    files = delete_driver_data(db, driver.id)
+    return DeleteDriverResponse(status="deleted", deleted_files=files)

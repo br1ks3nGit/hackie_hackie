@@ -70,6 +70,11 @@ export interface TripLabelResponse {
   status: 'added_to_score' | 'removed_from_score' | 'relabelled';
 }
 
+export interface DeleteDriverResponse {
+  status: 'deleted';
+  deleted_files: number;
+}
+
 export interface EventResponse {
   type: string;
   time: string;
@@ -171,4 +176,8 @@ export async function labelTrip(
     method: 'POST',
     body: JSON.stringify({ trip_type: tripType }),
   }, apiKey);
+}
+
+export async function deleteMe(apiKey: string): Promise<DeleteDriverResponse> {
+  return request('/me', { method: 'DELETE' }, apiKey);
 }
