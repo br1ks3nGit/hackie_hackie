@@ -27,12 +27,19 @@ Open (the director escalates these when the increment needs them):
 - [x] A2 Lint baseline: ruff format + safe fixes on legacy code, no behavior change. Rules that
       need behavior changes (e.g. `utcnow`, kept for the POC) and leftover ty errors are listed as
       explicit, commented ignores so the next PR's CI starts green.
-- [ ] A3 CI: GitHub Actions running ruff, ty, pytest on every PR (Postgres service added in A4).
+- [x] A3 CI: GitHub Actions running ruff, ty, pytest on every PR (Postgres service added in A4).
 - [ ] A4 Postgres: psycopg + Alembic with a baseline revision from the current models, replace
       `create_all` with `alembic upgrade head`, `.env.example` uses Postgres, tests run on Postgres
-      (tmp `DATA_DIR`), CI Postgres service + `alembic check` drift test.
+      (tmp `DATA_DIR`, nothing written to the real `data/raw/`), CI Postgres service + `alembic check` drift test.
 - [ ] A5 Docker: backend `Dockerfile` (uv), `docker-compose.yml` with Postgres + API (migrations on
       start, `data/raw` and `models/` volumes, healthchecks), README "run everything" section.
+- [ ] A6 Pydantic v2 validators (`field_validator`, `min_length`, `model_dump`) and timezone-aware
+      timestamps (`datetime.now(UTC)`, `timestamptz` revision); drop the DTZ ignores and the ty
+      `deprecated` downgrade.
+- [ ] A7 Size limits: split `app/pipeline.py` and `app/routers/reports.py` under 500 lines and
+      `process_trip` under 100 lines, no behavior change.
+- [ ] A8 Typed models: `Mapped[...]` / `mapped_column` so ty's `invalid-argument-type` and
+      `invalid-assignment` rules go back to error.
 
 ## Phase C - Known bugs
 - [ ] C1 `POST /v1/me/incidents`: check the trip belongs to the driver.
