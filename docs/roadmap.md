@@ -82,7 +82,7 @@ Open (the director escalates these when the increment needs them):
       security headers (CSP).
 
 ## Privacy (Option B)
-Decision: GPS is used on the phone for speed only; latitude and longitude are never transmitted or stored.
+Decision: GPS is read for speed only (and its accuracy), about once per second while recording. Latitude and longitude are never transmitted or stored.
 - [x] P1 Mobile and API stop sending/accepting coordinates (requests with coordinates get 422).
 - [x] P2 Pipeline, API and mobile are coordinate-free.
 - [x] P4 Dashboard and docs: no map, no locations, Leaflet removed.
