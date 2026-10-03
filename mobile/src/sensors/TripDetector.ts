@@ -23,17 +23,20 @@ export class TripDetector {
   private onTripStart?: (tripId: string) => void;
   private onTripEnd?: (tripId: string) => void;
   private onChunkUploaded?: (seq: number) => void;
+  private isDriving?: () => boolean;
 
   constructor(
     callbacks?: {
       onTripStart?: (tripId: string) => void;
       onTripEnd?: (tripId: string) => void;
       onChunkUploaded?: (seq: number) => void;
+      isDriving?: () => boolean;
     }
   ) {
     this.onTripStart = callbacks?.onTripStart;
     this.onTripEnd = callbacks?.onTripEnd;
     this.onChunkUploaded = callbacks?.onChunkUploaded;
+    this.isDriving = callbacks?.isDriving;
   }
 
   setCredentials(tripId: string, apiKey: string) {
@@ -169,6 +172,8 @@ export class TripDetector {
 
     const chunk: TripChunkRequest = {
       seq,
+      // Always sent: true when the "I'm driving" toggle is on, false when off
+      car_connected: this.isDriving?.() ?? false,
       imu: this._mergeImuSamples(accel, gyro),
       gps: gpsPoints.map(p => ({
         t: Math.round(p.t * 1000),
