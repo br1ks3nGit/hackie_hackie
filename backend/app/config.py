@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore"
+    test_database_url: str | None = None
     insurer_api_key: str  # required, no default — set via env or .env
     driver_api_key_salt: str  # required, no default — set via env or .env
     cors_origins: str = "http://localhost:3000,http://localhost:19006"
