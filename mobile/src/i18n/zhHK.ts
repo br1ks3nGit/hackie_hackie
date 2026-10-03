@@ -170,4 +170,5 @@ export const zhHK: Record<keyof typeof en, string> = {
   tripA11yNoScore: '{date}，{distance}，未有評分',
   minValue: '{min} 分鐘',
   setupFailed: '設定唔到你嘅帳戶。',
+  offlineBanner: '你而家離線，顯示緊上次嘅資料。',
 };

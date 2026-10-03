@@ -170,4 +170,5 @@ export const zhCN: Record<keyof typeof en, string> = {
   tripA11yNoScore: '{date}，{distance}，暂无评分',
   minValue: '{min} 分钟',
   setupFailed: '无法完成账户设置。',
+  offlineBanner: '你已离线，显示的是最近一次的数据。',
 };

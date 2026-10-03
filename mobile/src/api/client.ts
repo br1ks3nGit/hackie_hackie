@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../config';
+import { setOnline } from '../connectivity';
 
 const API_BASE = `${API_BASE_URL}/v1`;
 
@@ -113,10 +114,18 @@ async function request<T>(path: string, init?: RequestInit, apiKey?: string): Pr
     headers['X-API-Key'] = apiKey;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers,
+    });
+  } catch (err) {
+    // fetch only rejects when the server could not be reached
+    setOnline(false);
+    throw err;
+  }
+  setOnline(true);
 
   if (!response.ok) {
     const text = await response.text();

@@ -177,4 +177,5 @@ export const en = {
   tripA11yNoScore: '{date}, {distance}, no score yet',
   minValue: '{min} min',
   setupFailed: 'Could not set up your account.',
+  offlineBanner: 'You\'re offline. Showing your last data.',
 };
