@@ -1,11 +1,13 @@
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.config import get_settings
-from app.database import engine, Base
+from app.database import Base, engine
 from app.model import load_model
-from app.routers import ingestion, reports, admin
+from app.routers import admin, ingestion, reports
 
 settings = get_settings()
 

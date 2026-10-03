@@ -1,6 +1,7 @@
 import os
 import pickle
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 from app.config import get_settings
 
 settings = get_settings()
@@ -22,7 +23,7 @@ FEATURE_ORDER = [
 ]
 
 
-def _features_to_vector(features: Dict[str, Any]) -> List[float]:
+def _features_to_vector(features: dict[str, Any]) -> list[float]:
     """Flatten a pipeline feature dict into the FEATURE_ORDER vector."""
     events_per_100km = features.get("events_per_100km", {}) or {}
     flat = dict(features)
@@ -58,13 +59,15 @@ def load_model() -> None:
                 _model = pickle.load(f)
             _model_version = "pkl-model"
         except Exception as e:
-            raise ModelNotLoadedError(f"Failed to load model from {settings.model_path}: {e}")
+            raise ModelNotLoadedError(
+                f"Failed to load model from {settings.model_path}: {e}"
+            ) from e
     else:
         _model = None
         _model_version = "placeholder"
 
 
-def predict(features: Dict[str, Any]) -> Dict[str, Any]:
+def predict(features: dict[str, Any]) -> dict[str, Any]:
     """
     Predict driver risk from trip features.
 
@@ -91,7 +94,7 @@ def predict(features: Dict[str, Any]) -> Dict[str, Any]:
         except ModelPredictionError:
             raise
         except Exception as e:
-            raise ModelPredictionError(f"Model prediction failed: {e}")
+            raise ModelPredictionError(f"Model prediction failed: {e}") from e
 
     # Placeholder model: simple linear combination of event rates
     event_rates = features.get("events_per_100km", {})
@@ -107,12 +110,7 @@ def predict(features: Dict[str, Any]) -> Dict[str, Any]:
     speed_score = min(speeding_share / 0.2, 1.0)
 
     # Weighted average
-    confidence = (
-        0.3 * brake_score +
-        0.3 * accel_score +
-        0.2 * corner_score +
-        0.2 * speed_score
-    )
+    confidence = 0.3 * brake_score + 0.3 * accel_score + 0.2 * corner_score + 0.2 * speed_score
 
     return {"confidence": round(confidence, 4), "model_version": "placeholder"}
 

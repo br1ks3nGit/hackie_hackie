@@ -1,9 +1,10 @@
 import hashlib
 import hmac
 import secrets
-from typing import Optional
-from fastapi import Depends, HTTPException, Header
+
+from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
+
 from app.config import get_settings
 from app.database import get_db
 from app.models import Driver

@@ -35,9 +35,27 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "DTZ", "RUF"]
+ignore = [
+    # FastAPI idiom: Depends(...)/Query(...) in argument defaults. Permanent.
+    "B008",
+    # datetime.utcnow() / utcfromtimestamp() return naive UTC; fix is a behavior change (B5 timezone-aware timestamps)
+    "DTZ003",
+    "DTZ004",
+]
 
 [tool.ty.environment]
 python-version = "3.12"
+
+[tool.ty.rules]
+# Legacy Column() models are typed as Column[T], not T; resolved by moving to Mapped[] models (B1)
+invalid-argument-type = "warn"
+invalid-assignment = "warn"
+# datetime.utcnow() deprecation; fixed by B5 timezone-aware timestamps
+deprecated = "warn"
+
+[tool.ty.terminal]
+# warnings must not fail CI (exit 0); downgraded rules above are tracked in B1/B5
+error-on-warning = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

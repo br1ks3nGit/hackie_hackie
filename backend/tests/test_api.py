@@ -1,12 +1,14 @@
 import os
 import unittest.mock
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.main import app
-from app.database import Base, get_db
+
 from app.config import get_settings
+from app.database import Base, get_db
+from app.main import app
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -81,8 +83,24 @@ def test_full_trip_flow():
     chunk = {
         "seq": 0,
         "imu": [
-            {"t": 1759986000000, "ax": 0.1, "ay": 0.2, "az": 9.8, "gx": 0.01, "gy": 0.01, "gz": 0.02},
-            {"t": 1759986000020, "ax": 0.1, "ay": -3.5, "az": 9.7, "gx": 0.01, "gy": 0.01, "gz": 0.02},
+            {
+                "t": 1759986000000,
+                "ax": 0.1,
+                "ay": 0.2,
+                "az": 9.8,
+                "gx": 0.01,
+                "gy": 0.01,
+                "gz": 0.02,
+            },
+            {
+                "t": 1759986000020,
+                "ax": 0.1,
+                "ay": -3.5,
+                "az": 9.7,
+                "gx": 0.01,
+                "gy": 0.01,
+                "gz": 0.02,
+            },
         ],
         "gps": [
             {"t": 1759986000000, "lat": 22.3193, "lon": 114.1694, "speed": 10.0},

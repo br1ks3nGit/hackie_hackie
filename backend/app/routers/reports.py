@@ -1,28 +1,29 @@
 from datetime import datetime, timedelta
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
-from sqlalchemy.orm import Session
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.auth import get_current_driver, get_current_insurer
 from app.database import get_db
-from app.models import Driver, Trip, TripScore, TripFeature, Event, Incident
+from app.model import tier_to_multiplier
+from app.models import Driver, Event, Incident, Trip, TripFeature, TripScore
 from app.pipeline import process_trip
 from app.schemas import (
     DriverSummaryResponse,
-    TripListItem,
-    TripDetailResponse,
     EventResponse,
-    RoutePoint,
-    InsurerOverviewResponse,
-    InsurerDriverItem,
+    IncidentConfirm,
+    IncidentCreate,
+    IncidentResponse,
     InsurerDriverDetailResponse,
+    InsurerDriverItem,
+    InsurerOverviewResponse,
+    RoutePoint,
+    TripDetailResponse,
     TripLabelRequest,
     TripLabelResponse,
-    IncidentCreate,
-    IncidentConfirm,
-    IncidentResponse,
+    TripListItem,
 )
-from app.model import tier_to_multiplier
 
 router = APIRouter()
 
@@ -37,9 +38,7 @@ def _is_scoreable(trip: Trip) -> bool:
     if trip.trip_type in ("transit", "passenger"):
         return False
     # Unknown trips: only count if labelled by user as driver
-    if trip.trip_type == "unknown" and trip.label_source == "user":
-        return True
-    return False
+    return bool(trip.trip_type == "unknown" and trip.label_source == "user")
 
 
 def _is_expired_unknown(trip: Trip) -> bool:
@@ -68,7 +67,9 @@ def _calculate_driver_score(db: Session, driver_id: str, days: int = 90) -> tupl
     )
 
     # Filter to only scoreable trips
-    scoreable = [(t, s, f) for t, s, f in results if _is_scoreable(t) and not _is_expired_unknown(t)]
+    scoreable = [
+        (t, s, f) for t, s, f in results if _is_scoreable(t) and not _is_expired_unknown(t)
+    ]
 
     if not scoreable:
         return 60, 0.5, "C", 1.0, "stable", 0, 0.0
@@ -77,7 +78,7 @@ def _calculate_driver_score(db: Session, driver_id: str, days: int = 90) -> tupl
     weighted_score_sum = 0.0
     confidences = []
 
-    for trip, score, features in scoreable:
+    for _trip, score, features in scoreable:
         distance_km = features.features.get("distance_km", 0) if features else 0
         total_distance += distance_km
         weighted_score_sum += score.score * distance_km
@@ -104,7 +105,15 @@ def _calculate_driver_score(db: Session, driver_id: str, days: int = 90) -> tupl
     else:
         trend = "stable"
 
-    return int(avg_score), round(avg_confidence, 4), tier, multiplier, trend, len(scoreable), round(total_distance, 2)
+    return (
+        int(avg_score),
+        round(avg_confidence, 4),
+        tier,
+        multiplier,
+        trend,
+        len(scoreable),
+        round(total_distance, 2),
+    )
 
 
 def _calculate_passenger_stats(db: Session, driver_id: str, days: int = 90) -> dict:
@@ -161,7 +170,9 @@ def get_my_summary(
     driver: Driver = Depends(get_current_driver),
     db: Session = Depends(get_db),
 ):
-    score, confidence, tier, multiplier, trend, total_trips, total_distance = _calculate_driver_score(db, driver.id)
+    score, confidence, tier, multiplier, trend, total_trips, total_distance = (
+        _calculate_driver_score(db, driver.id)
+    )
     return DriverSummaryResponse(
         driver_id=driver.id,
         score=score,
@@ -174,7 +185,7 @@ def get_my_summary(
     )
 
 
-@router.get("/me/trips", response_model=List[TripListItem])
+@router.get("/me/trips", response_model=list[TripListItem])
 def get_my_trips(
     driver: Driver = Depends(get_current_driver),
     db: Session = Depends(get_db),
@@ -198,17 +209,19 @@ def get_my_trips(
             and trip.label_source != "user"
             and not _is_expired_unknown(trip)
         )
-        items.append(TripListItem(
-            trip_id=trip.id,
-            started_at=trip.started_at,
-            distance_km=trip.features.features.get("distance_km", 0) if trip.features else 0,
-            score=score.score if score else None,
-            tier=score.tier if score else None,
-            trip_type=trip.trip_type,
-            needs_confirmation=needs_confirmation,
-            label_source=trip.label_source,
-            transit_line=trip.transit_line,
-        ))
+        items.append(
+            TripListItem(
+                trip_id=trip.id,
+                started_at=trip.started_at,
+                distance_km=trip.features.features.get("distance_km", 0) if trip.features else 0,
+                score=score.score if score else None,
+                tier=score.tier if score else None,
+                trip_type=trip.trip_type,
+                needs_confirmation=needs_confirmation,
+                label_source=trip.label_source,
+                transit_line=trip.transit_line,
+            )
+        )
     return items
 
 
@@ -279,19 +292,22 @@ def get_my_trip_detail(
         score=score.score if score else None,
         confidence=score.confidence if score else None,
         tier=score.tier if score else None,
-        events=[EventResponse(
-            type=e.type,
-            time=e.time,
-            peak_g=e.peak_g,
-            lat=e.lat,
-            lon=e.lon,
-        ) for e in events],
+        events=[
+            EventResponse(
+                type=e.type,
+                time=e.time,
+                peak_g=e.peak_g,
+                lat=e.lat,
+                lon=e.lon,
+            )
+            for e in events
+        ],
         route=route,
         explanation=explanation,
     )
 
 
-def _generate_explanation(events: List[Event], features: dict) -> str:
+def _generate_explanation(events: list[Event], features: dict) -> str:
     if not events:
         return "Smooth trip with no detected harsh events."
 
@@ -341,7 +357,8 @@ def get_insurer_overview(
     # Average multiplier weighted by the number of trips in each tier
     total_scored = sum(tier_distribution.values())
     average_multiplier = (
-        sum(tier_to_multiplier(tier) * count for tier, count in tier_distribution.items()) / total_scored
+        sum(tier_to_multiplier(tier) * count for tier, count in tier_distribution.items())
+        / total_scored
         if total_scored > 0
         else 1.0
     )
@@ -354,29 +371,33 @@ def get_insurer_overview(
     )
 
 
-@router.get("/insurer/drivers", response_model=List[InsurerDriverItem])
+@router.get("/insurer/drivers", response_model=list[InsurerDriverItem])
 def get_insurer_drivers(
     _: None = Depends(get_current_insurer),
     db: Session = Depends(get_db),
-    tier: Optional[str] = Query(None),
-    sort: Optional[str] = Query("score_desc"),
+    tier: str | None = Query(None),
+    sort: str | None = Query("score_desc"),
 ):
     drivers = db.query(Driver).all()
     items = []
 
     for driver in drivers:
-        score, confidence, tier_val, multiplier, trend, total_trips, total_distance = _calculate_driver_score(db, driver.id)
+        score, confidence, tier_val, multiplier, _trend, total_trips, total_distance = (
+            _calculate_driver_score(db, driver.id)
+        )
         if tier and tier_val != tier:
             continue
-        items.append(InsurerDriverItem(
-            driver_id=driver.id,
-            score=score,
-            confidence=confidence,
-            tier=tier_val,
-            premium_multiplier=multiplier,
-            total_trips_90d=total_trips,
-            total_distance_km_90d=total_distance,
-        ))
+        items.append(
+            InsurerDriverItem(
+                driver_id=driver.id,
+                score=score,
+                confidence=confidence,
+                tier=tier_val,
+                premium_multiplier=multiplier,
+                total_trips_90d=total_trips,
+                total_distance_km_90d=total_distance,
+            )
+        )
 
     if sort == "score_desc":
         items.sort(key=lambda x: x.score, reverse=True)
@@ -400,7 +421,9 @@ def get_insurer_driver_detail(
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
 
-    score, confidence, tier, multiplier, trend, total_trips, total_distance = _calculate_driver_score(db, driver.id)
+    score, confidence, tier, multiplier, _trend, _total_trips, _total_distance = (
+        _calculate_driver_score(db, driver.id)
+    )
     passenger_stats = _calculate_passenger_stats(db, driver.id)
 
     cutoff = datetime.utcnow() - timedelta(days=90)
@@ -422,21 +445,22 @@ def get_insurer_driver_detail(
         .limit(20)
         .all()
     )
-    trip_items = [TripListItem(
-        trip_id=t.id,
-        started_at=t.started_at,
-        distance_km=t.features.features.get("distance_km", 0) if t.features else 0,
-        score=s.score if s else None,
-        tier=s.tier if s else None,
-        trip_type=t.trip_type,
-        needs_confirmation=(
-            t.trip_type == "unknown"
-            and t.label_source != "user"
-            and not _is_expired_unknown(t)
-        ),
-        label_source=t.label_source,
-        transit_line=t.transit_line,
-    ) for t, s in trips]
+    trip_items = [
+        TripListItem(
+            trip_id=t.id,
+            started_at=t.started_at,
+            distance_km=t.features.features.get("distance_km", 0) if t.features else 0,
+            score=s.score if s else None,
+            tier=s.tier if s else None,
+            trip_type=t.trip_type,
+            needs_confirmation=(
+                t.trip_type == "unknown" and t.label_source != "user" and not _is_expired_unknown(t)
+            ),
+            label_source=t.label_source,
+            transit_line=t.transit_line,
+        )
+        for t, s in trips
+    ]
 
     model_version = "unknown"
     if trips and trips[0][1]:
@@ -458,6 +482,7 @@ def get_insurer_driver_detail(
 
 
 # --- Incidents ---
+
 
 @router.post("/me/incidents", response_model=IncidentResponse)
 def create_incident(
@@ -498,10 +523,14 @@ def confirm_incident(
     driver: Driver = Depends(get_current_driver),
     db: Session = Depends(get_db),
 ):
-    incident = db.query(Incident).filter(
-        Incident.id == incident_id,
-        Incident.driver_id == driver.id,
-    ).first()
+    incident = (
+        db.query(Incident)
+        .filter(
+            Incident.id == incident_id,
+            Incident.driver_id == driver.id,
+        )
+        .first()
+    )
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
 
@@ -521,7 +550,7 @@ def confirm_incident(
     )
 
 
-@router.get("/me/incidents", response_model=List[IncidentResponse])
+@router.get("/me/incidents", response_model=list[IncidentResponse])
 def list_incidents(
     driver: Driver = Depends(get_current_driver),
     db: Session = Depends(get_db),

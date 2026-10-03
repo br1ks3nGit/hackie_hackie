@@ -1,10 +1,8 @@
-import pytest
 from app.model import (
-    predict,
     confidence_to_score,
+    predict,
     score_to_tier,
     tier_to_multiplier,
-    ModelPredictionError,
 )
 
 

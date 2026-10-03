@@ -6,11 +6,12 @@ GPS-derived forward acceleration and gyro-derived lateral acceleration in the
 pipeline see realistic values (calm ~0.1 g, harsh events 0.4-0.6 g).
 Chunks carry car_connected=True so trips classify as driver trips.
 """
+
 import argparse
 import math
 import random
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import requests
@@ -23,11 +24,17 @@ PROFILES = {
     # cruise m/s, normal accel m/s^2, harsh brakes per trip, harsh accel m/s^2, corner lateral g
     "calm": {"cruise": 11.0, "accel": 1.2, "harsh_brakes": 0, "launch": 1.2, "corner_g": 0.12},
     "moderate": {"cruise": 13.0, "accel": 1.8, "harsh_brakes": 1, "launch": 2.0, "corner_g": 0.25},
-    "aggressive": {"cruise": 16.5, "accel": 2.5, "harsh_brakes": 4, "launch": 4.0, "corner_g": 0.45},
+    "aggressive": {
+        "cruise": 16.5,
+        "accel": 2.5,
+        "harsh_brakes": 4,
+        "launch": 4.0,
+        "corner_g": 0.45,
+    },
 }
 
 
-def _speed_profile(duration_s: int, p: Dict[str, float]) -> np.ndarray:
+def _speed_profile(duration_s: int, p: dict[str, float]) -> np.ndarray:
     """Per-second speed (m/s): cruise with drift, a stop every ~2 min, optional harsh brakes."""
     v = np.zeros(duration_s)
     speed, target = 0.0, p["cruise"]
@@ -59,7 +66,7 @@ def _speed_profile(duration_s: int, p: Dict[str, float]) -> np.ndarray:
     return v
 
 
-def _yaw_profile(v: np.ndarray, p: Dict[str, float]) -> np.ndarray:
+def _yaw_profile(v: np.ndarray, p: dict[str, float]) -> np.ndarray:
     """Per-second yaw rate (rad/s): a 4 s turn roughly every minute while moving."""
     yaw = np.zeros(len(v))
     for start in range(30, len(v) - 5, 60):
@@ -70,7 +77,7 @@ def _yaw_profile(v: np.ndarray, p: Dict[str, float]) -> np.ndarray:
     return yaw
 
 
-def _build_chunks(trip_type: str, duration_s: int) -> List[Dict[str, Any]]:
+def _build_chunks(trip_type: str, duration_s: int) -> list[dict[str, Any]]:
     p = PROFILES[trip_type]
     v = _speed_profile(duration_s, p)
     yaw = _yaw_profile(v, p)
@@ -85,26 +92,30 @@ def _build_chunks(trip_type: str, duration_s: int) -> List[Dict[str, Any]]:
         imu, gps = [], []
         for s in range(chunk_start, min(chunk_start + 60, duration_s)):
             for k in range(IMU_HZ):
-                imu.append({
-                    "t": start_ms + s * 1000 + k * (1000 // IMU_HZ),
-                    "ax": yaw[s] * v[s] / G + random.gauss(0, 0.02),
-                    "ay": fwd[s] / G + random.gauss(0, 0.02),
-                    "az": 1.0 + random.gauss(0, 0.01),
-                    "gx": random.gauss(0, 0.01),
-                    "gy": random.gauss(0, 0.01),
-                    "gz": yaw[s] + random.gauss(0, 0.01),
-                })
+                imu.append(
+                    {
+                        "t": start_ms + s * 1000 + k * (1000 // IMU_HZ),
+                        "ax": yaw[s] * v[s] / G + random.gauss(0, 0.02),
+                        "ay": fwd[s] / G + random.gauss(0, 0.02),
+                        "az": 1.0 + random.gauss(0, 0.01),
+                        "gx": random.gauss(0, 0.01),
+                        "gy": random.gauss(0, 0.01),
+                        "gz": yaw[s] + random.gauss(0, 0.01),
+                    }
+                )
             heading += yaw[s]
             lat += v[s] * math.cos(heading) / 111320.0
             lon += v[s] * math.sin(heading) / (111320.0 * math.cos(math.radians(lat)))
-            gps.append({
-                "t": start_ms + s * 1000,
-                "lat": lat,
-                "lon": lon,
-                "speed": max(0.0, v[s] + random.gauss(0, 0.2)),
-                "heading": math.degrees(heading) % 360,
-                "accuracy": random.uniform(3, 10),
-            })
+            gps.append(
+                {
+                    "t": start_ms + s * 1000,
+                    "lat": lat,
+                    "lon": lon,
+                    "speed": max(0.0, v[s] + random.gauss(0, 0.2)),
+                    "heading": math.degrees(heading) % 360,
+                    "accuracy": random.uniform(3, 10),
+                }
+            )
         chunks.append({"seq": seq, "imu": imu, "gps": gps, "car_connected": True})
     return chunks
 
@@ -149,7 +160,9 @@ def register_and_simulate(trip_type: str = "calm") -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Simulate trips for DriveScore")
-    parser.add_argument("--api-key", help="Driver API key (if not provided, registers a new driver)")
+    parser.add_argument(
+        "--api-key", help="Driver API key (if not provided, registers a new driver)"
+    )
     parser.add_argument("--type", choices=list(PROFILES), default="calm", help="Trip type")
     parser.add_argument("--count", type=int, default=1, help="Number of trips")
 
@@ -160,7 +173,7 @@ def main():
             trip_id = generate_synthetic_trip(args.api_key, args.type)
         else:
             trip_id = register_and_simulate(args.type)
-        print(f"Trip {i+1}/{args.count} complete: {trip_id}")
+        print(f"Trip {i + 1}/{args.count} complete: {trip_id}")
         time.sleep(1)
 
 

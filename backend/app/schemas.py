@@ -1,13 +1,13 @@
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field, validator
 
+from pydantic import BaseModel, Field, validator
 
 # --- Auth / Registration ---
 
+
 class DriverRegisterRequest(BaseModel):
-    emergency_contact_name: Optional[str] = None
-    emergency_contact_phone: Optional[str] = None
+    emergency_contact_name: str | None = None
+    emergency_contact_phone: str | None = None
 
 
 class DriverRegisterResponse(BaseModel):
@@ -25,6 +25,7 @@ class ConsentResponse(BaseModel):
 
 
 # --- Trip Ingestion ---
+
 
 class TripStartResponse(BaseModel):
     trip_id: str
@@ -50,16 +51,16 @@ class GPSSample(BaseModel):
     t: int  # epoch ms
     lat: float = Field(..., ge=-90, le=90)
     lon: float = Field(..., ge=-180, le=180)
-    speed: Optional[float] = Field(None, ge=0)
-    heading: Optional[float] = Field(None, ge=0, lt=360)
-    accuracy: Optional[float] = Field(None, ge=0)
+    speed: float | None = Field(None, ge=0)
+    heading: float | None = Field(None, ge=0, lt=360)
+    accuracy: float | None = Field(None, ge=0)
 
 
 class TripChunkRequest(BaseModel):
     seq: int = Field(..., ge=0)
-    imu: List[IMUSample] = Field(..., min_items=1)
-    gps: List[GPSSample] = Field(..., min_items=1)
-    car_connected: Optional[bool] = None
+    imu: list[IMUSample] = Field(..., min_items=1)
+    gps: list[GPSSample] = Field(..., min_items=1)
+    car_connected: bool | None = None
 
     @validator("imu")
     def imu_timestamps_in_order(cls, v):
@@ -88,52 +89,54 @@ class TripEndResponse(BaseModel):
 class TripStatusResponse(BaseModel):
     trip_id: str
     status: str
-    failure_reason: Optional[str] = None
+    failure_reason: str | None = None
 
 
 # --- Processing Results ---
 
+
 class EventResponse(BaseModel):
     type: str
     time: datetime
-    peak_g: Optional[float]
-    lat: Optional[float]
-    lon: Optional[float]
+    peak_g: float | None
+    lat: float | None
+    lon: float | None
 
 
 class RoutePoint(BaseModel):
     lat: float
     lon: float
-    speed: Optional[float]
+    speed: float | None
 
 
 class TripDetailResponse(BaseModel):
     trip_id: str
     started_at: datetime
-    ended_at: Optional[datetime]
+    ended_at: datetime | None
     distance_km: float
     duration_min: float
-    score: Optional[int]
-    confidence: Optional[float]
-    tier: Optional[str]
-    events: List[EventResponse]
-    route: List[RoutePoint]
-    explanation: Optional[str]
+    score: int | None
+    confidence: float | None
+    tier: str | None
+    events: list[EventResponse]
+    route: list[RoutePoint]
+    explanation: str | None
 
 
 class TripListItem(BaseModel):
     trip_id: str
     started_at: datetime
     distance_km: float
-    score: Optional[int]
-    tier: Optional[str]
-    trip_type: Optional[str] = None
+    score: int | None
+    tier: str | None
+    trip_type: str | None = None
     needs_confirmation: bool = False
-    label_source: Optional[str] = None
-    transit_line: Optional[str] = None
+    label_source: str | None = None
+    transit_line: str | None = None
 
 
 # --- Driver Reports ---
+
 
 class DriverSummaryResponse(BaseModel):
     driver_id: str
@@ -147,6 +150,7 @@ class DriverSummaryResponse(BaseModel):
 
 
 # --- Insurer Reports ---
+
 
 class InsurerOverviewResponse(BaseModel):
     total_drivers: int
@@ -172,7 +176,7 @@ class InsurerDriverDetailResponse(BaseModel):
     tier: str
     premium_multiplier: float
     event_rates: dict
-    trips: List[TripListItem]
+    trips: list[TripListItem]
     model_version: str
     passenger_share: float = 0.0
     label_sources: dict = {}
@@ -191,14 +195,15 @@ class TripLabelResponse(BaseModel):
 
 # --- Incidents ---
 
+
 class IncidentCreate(BaseModel):
     type: str = "crash"
     time: datetime
-    lat: Optional[float] = None
-    lon: Optional[float] = None
-    peak_g: Optional[float] = None
-    trip_id: Optional[str] = None
-    sensor_snapshot: Optional[dict] = None
+    lat: float | None = None
+    lon: float | None = None
+    peak_g: float | None = None
+    trip_id: str | None = None
+    sensor_snapshot: dict | None = None
 
 
 class IncidentConfirm(BaseModel):
@@ -209,14 +214,15 @@ class IncidentResponse(BaseModel):
     id: int
     type: str
     time: datetime
-    lat: Optional[float]
-    lon: Optional[float]
-    peak_g: Optional[float]
-    confirmed: Optional[str]
+    lat: float | None
+    lon: float | None
+    peak_g: float | None
+    confirmed: str | None
     created_at: datetime
 
 
 # --- Admin ---
+
 
 class ReprocessResponse(BaseModel):
     trip_id: str

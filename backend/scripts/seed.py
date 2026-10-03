@@ -1,5 +1,6 @@
 import random
 import time
+
 import requests
 
 BASE_URL = "http://localhost:8000/v1"
@@ -29,10 +30,16 @@ def simulate_trip(driver_id: str, api_key: str, trip_type: str) -> None:
     import sys
 
     result = subprocess.run(
-        [sys.executable, "scripts/simulate.py",
-         "--api-key", api_key,
-         "--type", trip_type,
-         "--count", "1"],
+        [
+            sys.executable,
+            "scripts/simulate.py",
+            "--api-key",
+            api_key,
+            "--type",
+            trip_type,
+            "--count",
+            "1",
+        ],
         capture_output=True,
         text=True,
     )
@@ -51,7 +58,7 @@ def main():
         driver_id, api_key = register_driver()
         give_consent(driver_id, api_key)
         drivers.append((driver_id, api_key))
-        print(f"Registered driver {i+1}/30: {driver_id}")
+        print(f"Registered driver {i + 1}/30: {driver_id}")
 
     print("\nSimulating trips...")
     for i, (driver_id, api_key) in enumerate(drivers):
@@ -60,7 +67,7 @@ def main():
         num_trips = random.randint(3, 8)
 
         for j in range(num_trips):
-            print(f"Driver {i+1}/30, trip {j+1}/{num_trips} ({trip_type})")
+            print(f"Driver {i + 1}/30, trip {j + 1}/{num_trips} ({trip_type})")
             simulate_trip(driver_id, api_key, trip_type)
             time.sleep(0.5)
 

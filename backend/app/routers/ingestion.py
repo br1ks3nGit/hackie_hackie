@@ -3,25 +3,26 @@ import json
 import os
 import uuid
 from datetime import datetime
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.auth import get_current_driver, generate_api_key, hash_api_key
+
+from app.auth import generate_api_key, get_current_driver, hash_api_key
 from app.config import get_settings
 from app.database import get_db
-from app.models import Driver, Consent, Trip, TripChunk
+from app.models import Consent, Driver, Trip, TripChunk
+from app.pipeline import process_trip
 from app.schemas import (
-    DriverRegisterRequest,
-    DriverRegisterResponse,
     ConsentRequest,
     ConsentResponse,
-    TripStartResponse,
+    DriverRegisterRequest,
+    DriverRegisterResponse,
     TripChunkRequest,
     TripChunkResponse,
     TripEndResponse,
+    TripStartResponse,
     TripStatusResponse,
 )
-from app.pipeline import process_trip
 
 router = APIRouter()
 settings = get_settings()
@@ -88,10 +89,14 @@ def upload_chunk(
     # Chunks are only accepted while the trip is open; the mobile client sends
     # /end only after the final chunk has been acknowledged
     if trip.status != "uploading":
-        raise HTTPException(status_code=400, detail=f"Cannot upload chunks to trip in status {trip.status}")
+        raise HTTPException(
+            status_code=400, detail=f"Cannot upload chunks to trip in status {trip.status}"
+        )
 
     # Idempotency: if chunk already exists, return success
-    existing = db.query(TripChunk).filter(TripChunk.trip_id == trip_id, TripChunk.seq == chunk.seq).first()
+    existing = (
+        db.query(TripChunk).filter(TripChunk.trip_id == trip_id, TripChunk.seq == chunk.seq).first()
+    )
     if existing:
         return TripChunkResponse(status="already_received", received_at=existing.received_at)
 
@@ -118,7 +123,7 @@ def upload_chunk(
     return TripChunkResponse(status="received", received_at=trip_chunk.received_at)
 
 
-def _read_trip_end_time(trip_id: str) -> Optional[datetime]:
+def _read_trip_end_time(trip_id: str) -> datetime | None:
     """Read the last GPS sample timestamp from the highest-seq chunk file."""
     trip_dir = os.path.join(settings.data_dir, trip_id)
     if not os.path.exists(trip_dir):

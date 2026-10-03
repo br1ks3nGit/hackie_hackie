@@ -2,16 +2,17 @@ import gzip
 import json
 import logging
 import os
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from scipy import signal
-from sqlalchemy.orm import Session
+
+from app.classify import classify_trip
 from app.config import get_settings
 from app.database import SessionLocal
-from app.models import Trip, TripChunk, Event, TripFeature, TripScore, Incident
-from app.model import predict, confidence_to_score, score_to_tier
-from app.classify import classify_trip
+from app.model import confidence_to_score, predict, score_to_tier
+from app.models import Event, Incident, Trip, TripFeature, TripScore
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ class QualityCheckError(PipelineError):
     pass
 
 
-def _load_chunk(trip_id: str, seq: int) -> Dict[str, Any]:
+def _load_chunk(trip_id: str, seq: int) -> dict[str, Any]:
     path = os.path.join(settings.data_dir, trip_id, f"{seq}.json.gz")
     if not os.path.exists(path):
         raise PipelineError(f"Chunk file not found: {path}")
@@ -33,7 +34,7 @@ def _load_chunk(trip_id: str, seq: int) -> Dict[str, Any]:
         return json.load(f)
 
 
-def _load_all_chunks(trip_id: str) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[float]]:
+def _load_all_chunks(trip_id: str) -> tuple[pd.DataFrame, pd.DataFrame, float | None]:
     imu_rows = []
     gps_rows = []
     bt_connected = 0
@@ -90,17 +91,23 @@ def _quality_check(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> None:
     gps_gaps = gps_df["t"].diff().dropna() / 1000.0  # seconds
     max_gap = gps_gaps.max()
     if max_gap > settings.trip_max_gps_gap_s:
-        raise QualityCheckError(f"GPS gap too large: {max_gap:.1f}s > {settings.trip_max_gps_gap_s}s")
+        raise QualityCheckError(
+            f"GPS gap too large: {max_gap:.1f}s > {settings.trip_max_gps_gap_s}s"
+        )
 
     # Check duration
     duration_s = (imu_df["t"].max() - imu_df["t"].min()) / 1000.0
     if duration_s < settings.trip_min_duration_s:
-        raise QualityCheckError(f"Trip too short: {duration_s:.1f}s < {settings.trip_min_duration_s}s")
+        raise QualityCheckError(
+            f"Trip too short: {duration_s:.1f}s < {settings.trip_min_duration_s}s"
+        )
 
     # Check distance (haversine)
     distance_km = _calculate_distance_km(gps_df)
     if distance_km < settings.trip_min_distance_km:
-        raise QualityCheckError(f"Trip too short: {distance_km:.2f}km < {settings.trip_min_distance_km}km")
+        raise QualityCheckError(
+            f"Trip too short: {distance_km:.2f}km < {settings.trip_min_distance_km}km"
+        )
 
 
 def _calculate_distance_km(gps_df: pd.DataFrame) -> float:
@@ -187,7 +194,9 @@ def _rotate_to_car_frame(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> pd.DataF
     return imu_df
 
 
-def _apply_lowpass_filter(imu_df: pd.DataFrame, cutoff_hz: float = 5.0, fs: float = 50.0) -> pd.DataFrame:
+def _apply_lowpass_filter(
+    imu_df: pd.DataFrame, cutoff_hz: float = 5.0, fs: float = 50.0
+) -> pd.DataFrame:
     """Apply Butterworth low-pass filter to remove road vibration."""
     nyquist = fs / 2.0
     normal_cutoff = cutoff_hz / nyquist
@@ -205,7 +214,7 @@ def _apply_lowpass_filter(imu_df: pd.DataFrame, cutoff_hz: float = 5.0, fs: floa
 SPEEDING_THRESHOLD_MS = 13.9
 
 
-def _detect_events(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str, Any]]:
+def _detect_events(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> list[dict[str, Any]]:
     events = []
 
     # Thresholds in g
@@ -253,7 +262,7 @@ def _find_speeding_runs(
     mask,
     gps_df: pd.DataFrame,
     min_duration_s: float = 10.0,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Merge consecutive speeding samples into runs; one event per run > min_duration_s."""
     events = []
     times = imu_df["t"].values
@@ -274,28 +283,36 @@ def _find_speeding_runs(
         if duration_s > min_duration_s:
             row = imu_df.iloc[start]
             nearest_gps = _find_nearest_gps(row["t"], gps_df)
-            events.append({
-                "type": "speeding",
-                "time": row["time"],
-                "peak_g": None,
-                "lat": nearest_gps["lat"],
-                "lon": nearest_gps["lon"],
-            })
+            events.append(
+                {
+                    "type": "speeding",
+                    "time": row["time"],
+                    "peak_g": None,
+                    "lat": nearest_gps["lat"],
+                    "lon": nearest_gps["lon"],
+                }
+            )
         i += 1
 
     return events
 
 
-def _find_peaks(imu_df: pd.DataFrame, mask: pd.Series, event_type: str, gps_df: pd.DataFrame) -> List[Dict[str, Any]]:
+def _find_peaks(
+    imu_df: pd.DataFrame, mask: pd.Series, event_type: str, gps_df: pd.DataFrame
+) -> list[dict[str, Any]]:
     """Find peak events in a boolean mask."""
     events = []
     in_event = False
     peak_idx = None
     peak_val = 0
 
-    values = imu_df["accel_forward"].values if "brake" in event_type or "accel" in event_type else imu_df["accel_lateral"].values
+    values = (
+        imu_df["accel_forward"].values
+        if "brake" in event_type or "accel" in event_type
+        else imu_df["accel_lateral"].values
+    )
 
-    for i, (active, val) in enumerate(zip(mask, values)):
+    for i, (active, val) in enumerate(zip(mask, values, strict=False)):
         if active and not in_event:
             in_event = True
             peak_idx = i
@@ -308,37 +325,43 @@ def _find_peaks(imu_df: pd.DataFrame, mask: pd.Series, event_type: str, gps_df: 
             in_event = False
             row = imu_df.iloc[peak_idx]
             nearest_gps = _find_nearest_gps(row["t"], gps_df)
-            events.append({
-                "type": event_type,
-                "time": row["time"],
-                "peak_g": float(abs(peak_val)),
-                "lat": nearest_gps["lat"],
-                "lon": nearest_gps["lon"],
-            })
+            events.append(
+                {
+                    "type": event_type,
+                    "time": row["time"],
+                    "peak_g": float(abs(peak_val)),
+                    "lat": nearest_gps["lat"],
+                    "lon": nearest_gps["lon"],
+                }
+            )
 
     # Flush an event still open at the end of the array
     if in_event and peak_idx is not None:
         row = imu_df.iloc[peak_idx]
         nearest_gps = _find_nearest_gps(row["t"], gps_df)
-        events.append({
-            "type": event_type,
-            "time": row["time"],
-            "peak_g": float(abs(peak_val)),
-            "lat": nearest_gps["lat"],
-            "lon": nearest_gps["lon"],
-        })
+        events.append(
+            {
+                "type": event_type,
+                "time": row["time"],
+                "peak_g": float(abs(peak_val)),
+                "lat": nearest_gps["lat"],
+                "lon": nearest_gps["lon"],
+            }
+        )
 
     return events
 
 
-def _find_nearest_gps(t: int, gps_df: pd.DataFrame) -> Dict[str, float]:
+def _find_nearest_gps(t: int, gps_df: pd.DataFrame) -> dict[str, float]:
     """Find nearest GPS point to a timestamp."""
     idx = (gps_df["t"] - t).abs().idxmin()
     row = gps_df.loc[idx]
     return {"lat": row["lat"], "lon": row["lon"]}
 
 
-def _calculate_features(imu_df: pd.DataFrame, gps_df: pd.DataFrame, events: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _calculate_features(
+    imu_df: pd.DataFrame, gps_df: pd.DataFrame, events: list[dict[str, Any]]
+) -> dict[str, Any]:
     distance_km = _calculate_distance_km(gps_df)
     duration_s = (imu_df["t"].max() - imu_df["t"].min()) / 1000.0
     duration_min = duration_s / 60.0
@@ -366,12 +389,14 @@ def _calculate_features(imu_df: pd.DataFrame, gps_df: pd.DataFrame, events: List
     if len(gps_df) > 0:
         step = max(1, (len(gps_df) + 99) // 100)
         for _, row in gps_df.iloc[::step].iterrows():
-            route.append({
-                "t": int(row["t"]),
-                "lat": float(row["lat"]),
-                "lon": float(row["lon"]),
-                "speed": float(row["speed"]) if pd.notna(row["speed"]) else None,
-            })
+            route.append(
+                {
+                    "t": int(row["t"]),
+                    "lat": float(row["lat"]),
+                    "lon": float(row["lon"]),
+                    "speed": float(row["speed"]) if pd.notna(row["speed"]) else None,
+                }
+            )
 
     return {
         "distance_km": round(distance_km, 2),
@@ -391,7 +416,7 @@ CRASH_STOP_WINDOW_S = 5.0
 CRASH_STILL_DURATION_S = 30.0
 
 
-def _detect_crashes(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str, Any]]:
+def _detect_crashes(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> list[dict[str, Any]]:
     """
     Detect crashes: peak > 4g, then GPS speed drops to near 0 within 5s,
     then phone stays still for 30s.
@@ -407,9 +432,7 @@ def _detect_crashes(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str
         mag_cols = ("accel_forward", "accel_lateral", "accel_vertical")
 
     accel_mag = np.sqrt(
-        imu_df[mag_cols[0]] ** 2 +
-        imu_df[mag_cols[1]] ** 2 +
-        imu_df[mag_cols[2]] ** 2
+        imu_df[mag_cols[0]] ** 2 + imu_df[mag_cols[1]] ** 2 + imu_df[mag_cols[2]] ** 2
     )
 
     # Find peaks above threshold
@@ -452,9 +475,7 @@ def _detect_crashes(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str
             continue
 
         post_accel_mag = np.sqrt(
-            imu_after[mag_cols[0]] ** 2 +
-            imu_after[mag_cols[1]] ** 2 +
-            imu_after[mag_cols[2]] ** 2
+            imu_after[mag_cols[0]] ** 2 + imu_after[mag_cols[1]] ** 2 + imu_after[mag_cols[2]] ** 2
         )
         # Still = very low variance in acceleration
         if post_accel_mag.std() > 0.5:
@@ -472,14 +493,16 @@ def _detect_crashes(imu_df: pd.DataFrame, gps_df: pd.DataFrame) -> List[Dict[str
             "duration_ms": int(snapshot_end - snapshot_start),
         }
 
-        crashes.append({
-            "type": "crash",
-            "time": imu_df["time"].iloc[peak_idx],
-            "peak_g": peak_g,
-            "lat": nearest_gps["lat"],
-            "lon": nearest_gps["lon"],
-            "sensor_snapshot": sensor_snapshot,
-        })
+        crashes.append(
+            {
+                "type": "crash",
+                "time": imu_df["time"].iloc[peak_idx],
+                "peak_g": peak_g,
+                "lat": nearest_gps["lat"],
+                "lon": nearest_gps["lon"],
+                "sensor_snapshot": sensor_snapshot,
+            }
+        )
 
     return crashes
 
@@ -594,7 +617,10 @@ def process_trip(trip_id: str) -> None:
         trip.status = "done"
         db.commit()
 
-        logger.info(f"Trip {trip_id} processed successfully: score={score}, tier={tier}, type={classification['trip_type']}")
+        logger.info(
+            f"Trip {trip_id} processed successfully: score={score}, tier={tier}, "
+            f"type={classification['trip_type']}"
+        )
 
     except QualityCheckError as e:
         logger.warning(f"Trip {trip_id} failed quality check: {e}")
