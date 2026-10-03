@@ -1,13 +1,15 @@
 import os
 import shutil
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from app.auth import get_current_driver, get_current_insurer
 from app.config import get_settings
 from app.database import get_db
-from app.models import Driver, Consent, Trip, TripChunk, Event, TripFeature, TripScore, Incident
-from app.schemas import ReprocessResponse, DeleteDriverResponse
+from app.models import Consent, Driver, Event, Incident, Trip, TripChunk, TripFeature, TripScore
 from app.pipeline import process_trip
+from app.schemas import DeleteDriverResponse, ReprocessResponse
 
 router = APIRouter()
 settings = get_settings()
@@ -56,18 +58,18 @@ def delete_my_data(
                 deleted_files += 1
 
     # Delete DB records
-    db.query(Event).filter(Event.trip_id.in_(
-        db.query(Trip.id).filter(Trip.driver_id == driver.id)
-    )).delete(synchronize_session=False)
-    db.query(TripFeature).filter(TripFeature.trip_id.in_(
-        db.query(Trip.id).filter(Trip.driver_id == driver.id)
-    )).delete(synchronize_session=False)
-    db.query(TripScore).filter(TripScore.trip_id.in_(
-        db.query(Trip.id).filter(Trip.driver_id == driver.id)
-    )).delete(synchronize_session=False)
-    db.query(TripChunk).filter(TripChunk.trip_id.in_(
-        db.query(Trip.id).filter(Trip.driver_id == driver.id)
-    )).delete(synchronize_session=False)
+    db.query(Event).filter(
+        Event.trip_id.in_(db.query(Trip.id).filter(Trip.driver_id == driver.id))
+    ).delete(synchronize_session=False)
+    db.query(TripFeature).filter(
+        TripFeature.trip_id.in_(db.query(Trip.id).filter(Trip.driver_id == driver.id))
+    ).delete(synchronize_session=False)
+    db.query(TripScore).filter(
+        TripScore.trip_id.in_(db.query(Trip.id).filter(Trip.driver_id == driver.id))
+    ).delete(synchronize_session=False)
+    db.query(TripChunk).filter(
+        TripChunk.trip_id.in_(db.query(Trip.id).filter(Trip.driver_id == driver.id))
+    ).delete(synchronize_session=False)
     db.query(Incident).filter(Incident.driver_id == driver.id).delete(synchronize_session=False)
     db.query(Consent).filter(Consent.driver_id == driver.id).delete(synchronize_session=False)
     db.query(Trip).filter(Trip.driver_id == driver.id).delete(synchronize_session=False)

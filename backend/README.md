@@ -117,7 +117,7 @@ The model team implements `app/model.py`:
 ```python
 def predict(features: dict) -> dict:
     return {
-        "confidence": 0.0-1.0,  # probability driver is risky
+        "confidence": 0.0 - 1.0,  # probability driver is risky
         "model_version": "v1.0",
     }
 ```

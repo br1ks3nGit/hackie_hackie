@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
+
 from app.classify import (
-    classify_trip,
-    _check_transit_route_match,
-    _calculate_driver_likelihood,
     CONFIG,
+    _calculate_driver_likelihood,
+    _check_transit_route_match,
+    classify_trip,
 )
 
 
@@ -14,29 +15,33 @@ def _make_gps_df(points, speeds=None):
     times = [base_t + i * 1000 for i in range(len(points))]
     if speeds is None:
         speeds = [10.0] * len(points)
-    return pd.DataFrame({
-        "t": times,
-        "time": pd.to_datetime(times, unit="ms"),
-        "lat": [p[0] for p in points],
-        "lon": [p[1] for p in points],
-        "speed": speeds,
-    })
+    return pd.DataFrame(
+        {
+            "t": times,
+            "time": pd.to_datetime(times, unit="ms"),
+            "lat": [p[0] for p in points],
+            "lon": [p[1] for p in points],
+            "speed": speeds,
+        }
+    )
 
 
 def _make_imu_df(n=500, gyro_variance=0.001):
     """Helper to build an IMU DataFrame."""
     base_t = 1759986000000
     times = np.arange(base_t, base_t + n * 20, 20)
-    return pd.DataFrame({
-        "t": times,
-        "time": pd.to_datetime(times, unit="ms"),
-        "ax": np.random.normal(0, 0.05, len(times)),
-        "ay": np.random.normal(0, 0.05, len(times)),
-        "az": np.random.normal(9.8, 0.1, len(times)),
-        "gx": np.random.normal(0, gyro_variance, len(times)),
-        "gy": np.random.normal(0, gyro_variance, len(times)),
-        "gz": np.random.normal(0, gyro_variance, len(times)),
-    })
+    return pd.DataFrame(
+        {
+            "t": times,
+            "time": pd.to_datetime(times, unit="ms"),
+            "ax": np.random.normal(0, 0.05, len(times)),
+            "ay": np.random.normal(0, 0.05, len(times)),
+            "az": np.random.normal(9.8, 0.1, len(times)),
+            "gx": np.random.normal(0, gyro_variance, len(times)),
+            "gy": np.random.normal(0, gyro_variance, len(times)),
+            "gz": np.random.normal(0, gyro_variance, len(times)),
+        }
+    )
 
 
 def test_transit_mtr_line():
