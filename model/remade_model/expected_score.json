@@ -1,0 +1,7 @@
+{
+  "risk_score": 1.2920194699955732e-98,
+  "uncalibrated_score": 2.367906732017811e-92,
+  "label": 0,
+  "score_semantics": "synthetic manoeuvre probability; not future insured loss",
+  "fixture_basis": "deterministic synthetic signal from the teammate snapshot; scored with remade_model/model.json via serve.py"
+}

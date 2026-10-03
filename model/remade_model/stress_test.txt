@@ -1,0 +1,19 @@
+== 1. Overfit gap ==
+train AUC 0.9606 | VED test 0.9559 | DAF 0.8598
+train-test gap: 0.0047
+
+== 2. Identity probe ==
+car-from-features accuracy: 0.099 (chance ~0.056, 18 cars)
+
+== 3. Partition barriers ==
+all 10 pairs disjoint (cars + base windows)
+
+== 4. Pulse-shortcut probe (DAF baselines) ==
+real-harsh decile (mag_energy top 10%): mean score 0.942, share >0.5: 0.946
+calm half (bottom 50%): mean score 0.028, share >0.5: 0.009
+
+== 5. Prevalence stress (DAF TPR 0.948 FPR 0.214) ==
+prevalence   1%: precision 0.043
+prevalence   5%: precision 0.189
+prevalence  10%: precision 0.330
+prevalence  50%: precision 0.816
