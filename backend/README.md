@@ -101,6 +101,8 @@ Mobile App ──POST /v1/trips/{id}/chunks──> Backend
 - `GET /v1/me/summary` → driver score, tier, premium multiplier, trend
 - `GET /v1/me/trips` → list of trips
 - `GET /v1/me/trips/{trip_id}` → trip detail with events and route
+- `POST /v1/me/trips/{trip_id}/label` -> label a trip `driver` or `passenger`
+- `POST /v1/me/incidents`, `POST /v1/me/incidents/{incident_id}/confirm`, `GET /v1/me/incidents` -> crash incidents
 
 ### Insurer reports
 
@@ -110,7 +112,7 @@ Mobile App ──POST /v1/trips/{id}/chunks──> Backend
 
 ### Admin
 
-- `POST /v1/trips/{trip_id}/reprocess` → re-run pipeline for a failed trip
+- `POST /v1/trips/{trip_id}/reprocess` -> re-run pipeline for a trip (insurer key)
 - `DELETE /v1/me` → delete all driver data (PDPO right to erasure)
 
 ## Model plugin
@@ -145,7 +147,7 @@ If loading fails or the model returns invalid values, the API fails loudly.
 
 - Orientation-free car frame: gravity removed with a 10 s rolling median; forward accel from GPS speed change, lateral accel from gyro yaw rate x GPS speed
 - GPS speed is used for event detection when available
-- Night driving = 23:00-05:00 local time
+- Night driving = 23:00-05:59 Asia/Hong_Kong
 - Speeding threshold = 50 km/h (fixed HK urban default; one event per run > 10 s)
 - Events are detected with fixed thresholds in `app/pipeline.py`
 - PostgreSQL (sync SQLAlchemy + psycopg 3) everywhere; schema is managed by Alembic
@@ -177,6 +179,7 @@ backend/
 │   ├── auth.py           # API key auth
 │   ├── model.py          # Model plugin interface
 │   ├── pipeline.py       # Processing pipeline
+│   ├── classify.py       # Trip classification (transit / driver / unknown)
 │   └── routers/
 │       ├── ingestion.py  # Trip upload endpoints
 │       ├── reports.py    # Driver and insurer reports
@@ -188,11 +191,9 @@ backend/
 │   ├── simulate.py       # Generate synthetic trips
 │   ├── seed.py           # Seed demo drivers
 │   └── export_openapi.py # Export OpenAPI JSON
-├── tests/
-│   ├── test_api.py
-│   ├── test_model.py
-│   └── test_pipeline.py
+├── tests/                # pytest suite (api, pipeline, classify, crash, model, migrations, config)
 ├── data/
+│   ├── transit_lines.geojson  # HK transit lines used by classification
 │   └── raw/              # Raw sensor chunks (gitignored)
 ├── contract/
 │   └── openapi.json      # Exported API contract
