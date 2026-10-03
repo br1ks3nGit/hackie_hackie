@@ -177,7 +177,7 @@ If loading fails or the model returns invalid values, the API fails loudly.
 - Night driving = 23:00-05:59 Asia/Hong_Kong
 - Speeding threshold = 50 km/h (fixed HK urban default; one event per run > 10 s)
 - Events are detected with fixed thresholds in `app/pipeline.py`
-- PostgreSQL (sync SQLAlchemy + psycopg 3) everywhere; schema is managed by Alembic (0001 baseline, 0002 timestamptz, 0003 column comments)
+- PostgreSQL (sync SQLAlchemy + psycopg 3) everywhere; schema is managed by Alembic (0001 baseline, 0002 timestamptz, 0003 column comments, 0004 FK indexes)
 - Timestamps are timezone-aware UTC (`timestamptz`, DB sessions pinned to UTC); API datetimes end in `Z`
 - Detailed data model (ER diagram, allowed values): [`../docs/data-model.md`](../docs/data-model.md)
 

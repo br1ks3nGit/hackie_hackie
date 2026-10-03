@@ -113,7 +113,7 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 |   |       |-- reports.py       driver and insurer reports, labelling, incidents
 |   |       `-- admin.py         reprocess a trip, delete my data
 |   |-- Dockerfile               API image (uv, non-root user)
-|   |-- migrations/              Alembic env + versions/ (0001, 0002, 0003)
+|   |-- migrations/              Alembic env + versions/ (0001-0004)
 |   |-- scripts/                 seed.py, simulate.py, export_openapi.py
 |   |-- data/transit_lines.geojson   HK transit lines for classification
 |   |-- data/raw/                raw sensor chunks at runtime (gitignored)
@@ -554,7 +554,7 @@ Raw sensor data is not in the database; it lives as gzip JSON files on disk
 ### Schema changes (Alembic)
 
 Revisions so far: `0001_baseline` (all 8 tables), `0002_timestamptz` (timestamps become
-timezone-aware), `0003_column_comments` (column comments from `app/models.py`).
+timezone-aware), `0003_column_comments` (column comments from `app/models.py`), `0004_fk_indexes`
 
 Never edit an applied revision; add a new one.
 
@@ -687,7 +687,7 @@ This is a hackathon POC. Be aware of the following.
 - The model is loaded with `pickle`; only deploy trusted model files.
 - `POST /v1/me/incidents` does not check that `trip_id` belongs to the driver (C1).
 - Insurer listing computes each driver's score in a loop, which will not scale beyond
-  hundreds of drivers. Foreign-key indexes are missing (A9).
+  hundreds of drivers.
 
 **Docs**
 - `docs/handoff.md` and `contracts/` describe an earlier API design (`POST /trips`,
@@ -700,9 +700,9 @@ Full plan and status in [docs/roadmap.md](docs/roadmap.md). One line is one smal
 
 - Done: A1 uv tooling, A2 lint baseline, A3 CI, A4 PostgreSQL + Alembic, A5 Docker image and
   compose for the API, A6 Pydantic v2 and timezone-aware timestamps, A8 typed models, A10
-  readable schema (allowed values, field docs, TripFeatures, data-model.md), C2 pipeline
-  error path fix.
-- Next (phase A): A9 foreign-key indexes, A7 split oversized files, A11 cleanups.
+  readable schema (allowed values, field docs, TripFeatures, data-model.md), A9 foreign-key
+  indexes, C2 pipeline error path fix.
+- Next (phase A): A7 split oversized files, A11 cleanups.
 - Bugs: C1 incident trip ownership check.
 - Mobile (phase E): configurable `API_BASE`, send `car_connected`, optional trip labelling,
   NativeWind.
