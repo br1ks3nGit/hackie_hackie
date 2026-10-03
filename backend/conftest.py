@@ -46,7 +46,14 @@ def alembic_config() -> Config:
 
 @pytest.fixture(scope="session", autouse=True)
 def migrated_db(alembic_config: Config) -> None:
-    """Build the test schema from the migrations (also proves they apply cleanly)."""
+    """Build the test schema from the migrations (also proves they apply cleanly).
+
+    Starts from an empty public schema; safe because the module guard above only allows a
+    database whose name ends with '_test'.
+    """
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
     command.upgrade(alembic_config, "head")
 
 

@@ -85,8 +85,7 @@ def test_processed_events_and_incidents_have_no_location() -> None:
         feature = db.query(TripFeature).filter(TripFeature.trip_id == trip_id).one()
         assert any(e.type == "speeding" for e in events)
         assert incidents, "synthetic crash was not detected"
-        assert all(e.lat is None and e.lon is None for e in events)
-        assert all(i.lat is None and i.lon is None for i in incidents)
+        assert not any(hasattr(r, c) for r in (*events, *incidents) for c in ("lat", "lon"))
         assert "route" not in feature.features
         assert feature.features["distance_km"] > 0.5
 

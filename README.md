@@ -117,7 +117,7 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 |   |       |-- incidents.py     /me/incidents create, confirm, list
 |   |       `-- admin.py         reprocess a trip, delete my data
 |   |-- Dockerfile               API image (uv, non-root user)
-|   |-- migrations/              Alembic env + versions/ (0001-0004)
+|   |-- migrations/              Alembic env + versions/ (0001_initial)
 |   |-- scripts/                 seed.py, simulate.py, export_openapi.py
 |   |-- data/raw/                raw sensor chunks at runtime (gitignored)
 |   |-- contract/openapi.json    exported OpenAPI contract (+ examples/)
@@ -638,19 +638,34 @@ Where things live:
 | `consents` | `id`, `driver_id`, `version`, `granted_at` | FK to `drivers`; required before `trips/start` |
 | `trips` | `id`, `driver_id`, `status`, `started_at`, `ended_at`, `failure_reason`, `trip_type`, `label_source`, `driver_likelihood`, `transit_line`, `bluetooth_connected_ratio`, `created_at` | FK to `drivers`; `trip_type`: driver / passenger / transit / unknown; `label_source`: bluetooth / rules / user |
 | `trip_chunks` | `id`, `trip_id`, `seq`, `file_path`, `received_at` | FK to `trips`; unique `(trip_id, seq)` gives idempotent uploads |
-| `events` | `id`, `trip_id`, `type`, `time`, `peak_g`, `lat`, `lon` (deprecated, always NULL, dropped in migration 0005) | FK to `trips`; harsh_brake, harsh_accel, sharp_corner, speeding |
+| `events` | `id`, `trip_id`, `type`, `time`, `peak_g` | FK to `trips`; harsh_brake, harsh_accel, sharp_corner, speeding |
 | `trip_features` | `id`, `trip_id` (unique), `features` (JSON) | One row per trip; model input |
 | `trip_scores` | `id`, `trip_id` (unique), `confidence`, `score`, `tier`, `model_version`, `created_at` | One row per scored trip |
-| `incidents` | `id`, `driver_id`, `trip_id` (nullable), `type`, `time`, `lat`, `lon` (deprecated, always NULL, dropped in migration 0005), `peak_g`, `confirmed`, `sensor_snapshot` (JSON), `created_at` | FK to `drivers` and `trips`; `confirmed`: ok / help_needed / no_response |
+| `incidents` | `id`, `driver_id`, `trip_id` (nullable), `type`, `time`, `peak_g`, `confirmed`, `sensor_snapshot` (JSON), `created_at` | FK to `drivers` and `trips`; `confirmed`: ok / help_needed / no_response |
 
 Raw sensor data is not in the database; it lives as gzip JSON files on disk
 (`DATA_DIR/<trip_id>/<seq>.json.gz`), referenced by `trip_chunks.file_path`.
 
 ### Schema changes (Alembic)
 
-Revisions so far: `0001_baseline` (all 8 tables), `0002_timestamptz` (timestamps become
-timezone-aware), `0003_column_comments` (column comments from
-`app/models.py`), `0004_fk_indexes` (indexes on foreign-key columns).
+Revisions so far: `0001_initial` (the whole schema: 8 tables, timezone-aware timestamps,
+column comments, foreign-key indexes; no location columns). The earlier history was squashed
+into this single revision before anything was deployed.
+
+**Upgrading an existing dev database.** Because the history was squashed, an old database
+(with `alembic_version` 0001-0005) no longer matches. Reset it: `docker compose down -v`
+(WARNING: this deletes all local dev database data), then `docker compose up -d db --wait` and `uv run alembic upgrade head` (or drop and
+recreate the `drivescore` and `drivescore_test` databases). Then remove coordinates still
+present in raw chunk files on disk, once:
+
+```bash
+cd backend
+uv run python scripts/scrub_coordinates.py           # dry run: counts only
+uv run python scripts/scrub_coordinates.py --apply   # rewrite files
+# Docker: dry run first, then apply
+docker compose exec api python scripts/scrub_coordinates.py
+docker compose exec api python scripts/scrub_coordinates.py --apply
+```
 
 Never edit an applied revision; add a new one.
 
@@ -671,7 +686,8 @@ Designed with Hong Kong's Personal Data (Privacy) Ordinance in mind. This is a d
 intent for the POC, not legal advice.
 
 - **No coordinates, ever.** Coordinates never leave the phone: GPS is used on-device for
-  speed only. The server stores no locations. Requests carrying `lat`, `lon`, `lng` or any
+  speed only. The server stores no locations (the schema has no location columns, and
+  `scripts/scrub_coordinates.py` strips any left in old raw chunk files). Requests carrying `lat`, `lon`, `lng` or any
   unknown field are rejected with 422. There are no route maps and no event locations in
   the API or the dashboard. Transit trips are confirmed by the user, not matched to a line.
 
