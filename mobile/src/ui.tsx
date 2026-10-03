@@ -177,14 +177,15 @@ interface PageHeaderProps {
   eyebrow?: string;
   title: string;
   right?: React.ReactNode;
+  titleRef?: React.Ref<Text>;
 }
 
-export function PageHeader({ eyebrow, title, right }: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, right, titleRef }: PageHeaderProps) {
   return (
     <View style={styles.header}>
       <View style={styles.headerText}>
         {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-        <Text style={styles.title} accessibilityRole="header">
+        <Text ref={titleRef} style={styles.title} accessibilityRole="header">
           {title}
         </Text>
       </View>
