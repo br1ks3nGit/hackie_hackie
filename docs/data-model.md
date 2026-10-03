@@ -148,8 +148,6 @@ Purpose: harsh driving events detected in a trip.
 | type | string | no | Event kind, see Allowed values. |
 | time | timestamptz | no | When the event happened. |
 | peak_g | float | yes | Peak acceleration in g; null for speeding. |
-| lat | float | yes | Deprecated, always NULL, dropped in migration 0005 (P3). |
-| lon | float | yes | Deprecated, always NULL, dropped in migration 0005 (P3). |
 
 ### trip_features
 
@@ -188,8 +186,6 @@ Purpose: detected or reported crashes.
 | trip_id | string | yes | FK to trips.id when linked to a trip. |
 | type | string | no | Incident kind; currently crash. |
 | time | timestamptz | no | When it happened. |
-| lat | float | yes | Deprecated, always NULL, dropped in migration 0005 (P3). |
-| lon | float | yes | Deprecated, always NULL, dropped in migration 0005 (P3). |
 | peak_g | float | yes | Peak acceleration in g. |
 | confirmed | string | yes | Driver answer; null until confirmed. |
 | sensor_snapshot | json | yes | peak_g, imu_samples, duration_ms around the crash. |
@@ -197,7 +193,7 @@ Purpose: detected or reported crashes.
 
 ## Indexes
 
-Foreign-key indexes (default names `ix_<table>_<column>`), added in migration 0004:
+Foreign-key indexes (default names `ix_<table>_<column>`), created in migration 0001:
 
 | Index | Column |
 |---|---|

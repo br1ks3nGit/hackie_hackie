@@ -144,8 +144,6 @@ class Event(Base):
     peak_g: Mapped[float | None] = mapped_column(
         Float, nullable=True, comment="Peak acceleration in g; null for speeding"
     )
-    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
-    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="events")
 
@@ -215,8 +213,6 @@ class Incident(Base):
     )
     type: Mapped[str] = mapped_column(String, nullable=False, comment="Incident kind; crash")
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
-    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     peak_g: Mapped[float | None] = mapped_column(
         Float, nullable=True, comment="Peak acceleration in g"
     )

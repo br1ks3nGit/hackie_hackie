@@ -57,8 +57,6 @@ def _add_incidents(db: Session, trip: Trip, trip_id: str, crashes: list[dict[str
             trip_id=trip_id,
             type="crash",
             time=crash_data["time"],
-            lat=None,
-            lon=None,
             peak_g=crash_data["peak_g"],
             sensor_snapshot=crash_data["sensor_snapshot"],
         )
@@ -73,8 +71,6 @@ def _add_events(db: Session, trip_id: str, events: list[dict[str, Any]]) -> None
             type=event_data["type"],
             time=event_data["time"],
             peak_g=event_data["peak_g"],
-            lat=None,
-            lon=None,
         )
         db.add(event)
 

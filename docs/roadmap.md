@@ -41,7 +41,7 @@ Open (the director escalates these when the increment needs them):
 - [x] A8 Typed models: `Mapped[...]` / `mapped_column` so ty's `invalid-argument-type` and
       `invalid-assignment` rules go back to error.
 - [x] A9 FK indexes: `index=True` on `trips.driver_id`, `events.trip_id`, `incidents.driver_id`,
-      `incidents.trip_id`, `consents.driver_id` + revision 0004 (keeps the drift test green).
+      `incidents.trip_id`, `consents.driver_id` + the initial migration (keeps the drift test green).
 - [x] A10 Readable schema: `Literal` types for status/tier/type fields, `Field(description, examples)`
       on every API schema, typed models instead of bare dicts, a `TripFeatures` Pydantic model for
       the pipeline/model contract, table docstrings and column comments, `docs/data-model.md` with
@@ -76,7 +76,7 @@ Decision: GPS is used on the phone for speed only; latitude and longitude are ne
 - [x] P1 Mobile and API stop sending/accepting coordinates (requests with coordinates get 422).
 - [x] P2 Pipeline, API and mobile are coordinate-free.
 - [x] P4 Dashboard and docs: no map, no locations, Leaflet removed.
-- [ ] P3 (next) Migration 0005 drops `events.lat/lon`, `incidents.lat/lon`.
+- [x] P3 `events.lat/lon` and `incidents.lat/lon` removed; migration history squashed into one `0001_initial` (nothing deployed yet); `scripts/scrub_coordinates.py` cleans raw chunk files. Privacy Option B complete.
 
 ## Phase G - Docs
 - [ ] G1 Rewrite `docs/handoff.md` and `contracts/` from the generated OpenAPI contract.
