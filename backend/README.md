@@ -5,7 +5,7 @@ Usage-based car insurance backend for the bolttech hackathon track (Hong Kong).
 ## What this is
 
 Phone sensors measure driving behavior → a model scores risk → the score sets the premium.
-This backend is the connection layer between the mobile app, the ML model, and the two dashboards (driver app and insurer dashboard).
+This backend is the connection layer between the mobile app, the ML model, and the insurer. It serves the JSON API (`/v1`) used by the mobile app and by insurer machine access, and the server-rendered insurer dashboard (`/dashboard`, staff login).
 
 ## Quick start
 
@@ -219,14 +219,17 @@ backend/
 │   ├── auth.py           # API key auth
 │   ├── model.py          # Model plugin interface
 │   ├── pipeline/         # Processing pipeline package (process.py has process_trip)
-│   ├── services/         # Scoring helpers shared by the report routers
+│   ├── services/         # Scoring, users, API keys, erasure; shared by routers and dashboard
 │   ├── classify.py       # Trip classification (driver / unknown)
+│   ├── templates/        # Dashboard Jinja2 templates
+│   ├── static/           # Dashboard assets (uno.css, js, vendor)
 │   └── routers/
 │       ├── ingestion.py  # Trip upload endpoints
-│       ├── driver.py     # /me reports and labelling
+│       ├── driver.py     # /me reports, labelling, DELETE /me
 │       ├── insurer.py    # /insurer reports
 │       ├── incidents.py  # /me/incidents
-│       └── admin.py      # Reprocess and delete
+│       ├── dashboard*.py # Staff dashboard pages (login, overview, drivers, trips, incidents, users, API keys)
+│       └── admin.py      # Reprocess a trip
 ├── migrations/           # Alembic env + versions
 ├── Dockerfile            # API image
 ├── docker/               # DB init script (creates drivescore_test), API entrypoint
