@@ -222,6 +222,10 @@ to reset everything).
 |---|---|---|
 | `INSURER_API_KEY` | none, **required** | Shared secret for insurer endpoints and reprocess. The app will not start without it. |
 | `DRIVER_API_KEY_SALT` | none, **required** | Salt for hashing driver API keys (SHA-256). Changing it invalidates all existing driver keys. |
+| `SESSION_SECRET` | none, **required** | Signs the dashboard session cookie. The app will not start without it. |
+| `DASHBOARD_USERNAME` | `admin` | Insurer dashboard staff username. |
+| `DASHBOARD_PASSWORD_HASH` | unset | `scrypt:<n>:<r>:<p>:<salt_hex>:<hash_hex>` from `scripts/hash_password.py`. Unset means dashboard login is disabled (the login page says so). |
+| `SESSION_HTTPS_ONLY` | `false` | Set `true` behind HTTPS so the session cookie is `Secure`. |
 | `DATABASE_URL` | `postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore` | SQLAlchemy URL of the main database. |
 | `TEST_DATABASE_URL` | unset | Database used by pytest; its name must end in `_test`. |
 | `CORS_ORIGINS` | `http://localhost:3000,http://localhost:19006` | Comma-separated allowed origins. |
@@ -230,6 +234,33 @@ to reset everything).
 | `TRIP_MIN_DISTANCE_KM` | `1.0` | Quality check: minimum trip distance. |
 | `TRIP_MAX_GPS_GAP_S` | `30.0` | Quality check: maximum gap between GPS fixes. |
 | `TRIP_MIN_DURATION_S` | `60.0` | Quality check: minimum trip duration. |
+
+### Insurer dashboard
+
+Staff-only HTML dashboard at `http://localhost:8000/dashboard` (Jinja2 + HTMX + Alpine.js + UnoCSS,
+no JSON API calls). One staff user; session cookie (8 h, SameSite=Lax) plus per-session CSRF token.
+Not part of the OpenAPI contract.
+
+```bash
+# from backend/: create the password hash (prompts; or --generate for a random password)
+uv run python scripts/hash_password.py
+# put the printed line in .env (docker compose reads it from the repo-root .env):
+#   DASHBOARD_PASSWORD_HASH=scrypt:32768:8:1:<salt>:<hash>
+#   SESSION_SECRET=<long random string, e.g. python -c "import secrets; print(secrets.token_urlsafe(48))">
+#   DASHBOARD_USERNAME=admin        # optional
+```
+
+The hash contains no `$`, so docker compose does not interpolate it. Restart the API after changing
+it. Rebuild the stylesheet after editing templates or `backend/uno.config.ts` (Node needed only for
+this; the generated `app/static/css/uno.css` is committed):
+
+```bash
+npm --prefix backend install   # once
+npm --prefix backend run css
+```
+
+Tokens and components: `docs/design-system.md`. htmx and Alpine are vendored under
+`backend/app/static/vendor/` (versions in its README).
 
 ### Demo data
 

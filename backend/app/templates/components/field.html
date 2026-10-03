@@ -1,0 +1,17 @@
+{% macro field(id, label, type="text", value="", error=none, hint=none, required=false, autocomplete=none, describedby=none, invalid=false) -%}
+<div class="flex flex-col gap-1">
+  <label for="{{ id }}" class="text-sm font-medium text-text">{{ label }}{% if required %} <span class="text-text-muted">(required)</span>{% endif %}</label>
+  <input id="{{ id }}" name="{{ id }}" type="{{ type }}" class="input"
+    {%- if value %} value="{{ value }}"{% endif %}
+    {%- if required %} required{% endif %}
+    {%- if autocomplete %} autocomplete="{{ autocomplete }}"{% endif %}
+    {%- if error or invalid %} aria-invalid="true"{% endif %}
+    {%- set described = [] -%}
+    {%- if hint %}{% set _ = described.append(id ~ "-hint") %}{% endif -%}
+    {%- if error %}{% set _ = described.append(id ~ "-err") %}{% endif -%}
+    {%- if describedby %}{% set _ = described.append(describedby) %}{% endif -%}
+    {%- if described %} aria-describedby="{{ described|join(' ') }}"{% endif %}>
+  {% if hint %}<p id="{{ id }}-hint" class="text-sm text-text-muted">{{ hint }}</p>{% endif %}
+  {% if error %}<p id="{{ id }}-err" class="text-sm text-danger" role="alert">Error: {{ error }}</p>{% endif %}
+</div>
+{%- endmacro %}

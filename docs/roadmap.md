@@ -17,7 +17,7 @@ Made:
 - Mobile styling: NativeWind, sharing token names with the dashboard's UnoCSS config.
 
 Open (the director escalates these when the increment needs them):
-- D4 Dashboard charts (needed by F2): Chart.js (simple) or uPlot (fast for long time series).
+- D4 Dashboard charts (needed by F2): decided Chart.js (simple; uPlot only if long time series appear).
 - D5 Raw chunk storage: local disk works for one API instance; object storage (S3 / MinIO) is
   needed before running more than one instance. Not needed for the POC.
 
@@ -62,12 +62,14 @@ Open (the director escalates these when the increment needs them):
 - [x] E4 NativeWind setup and design tokens.
 
 ## Phase F - Insurer dashboard
-- [ ] F1 Basic staff login (env credentials, hashed password), cookie session, CSRF, base layout,
+- [x] F1 Basic staff login (env credentials, hashed password), cookie session, CSRF, base layout,
       UnoCSS build.
 - [ ] F2 Overview page: totals, tier distribution, average multiplier (HTMX partials).
 - [ ] F3 Drivers list with filter, sort, pagination; driver detail.
 - [ ] F4 Trip detail with Leaflet route and event markers.
 - [ ] F5 Incidents page.
+- [ ] Later: dashboard hardening: login rate limiting/lockout, server-side session revocation,
+      security headers (CSP).
 
 ## Phase G - Docs
 - [ ] G1 Rewrite `docs/handoff.md` and `contracts/` from the generated OpenAPI contract.

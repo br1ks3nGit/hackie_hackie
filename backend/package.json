@@ -1,0 +1,12 @@
+{
+  "name": "drivescore-dashboard-css",
+  "private": true,
+  "version": "0.0.0",
+  "description": "UnoCSS build for the insurer dashboard",
+  "scripts": {
+    "css": "unocss \"app/templates/**/*.html\" -o app/static/css/uno.css"
+  },
+  "devDependencies": {
+    "unocss": "66.10.5"
+  }
+}
