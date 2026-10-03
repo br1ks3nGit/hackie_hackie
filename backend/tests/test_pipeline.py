@@ -2,12 +2,15 @@ from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from app.pipeline import (
+    PipelineError,
     _calculate_distance_km,
     _calculate_features,
     _detect_events,
     _resample_imu,
+    _validate_features,
 )
 
 
@@ -163,3 +166,57 @@ def test_calculate_features():
     assert "events_per_100km" in features
     assert "harsh_brake" in features["events_per_100km"]
     assert features["events_per_100km"]["harsh_brake"] > 0
+
+
+def _minimal_frames():
+    start_t = 1000000000000
+    times = np.arange(start_t, start_t + 60000, 20)
+    imu_df = pd.DataFrame({"t": times, "time": pd.to_datetime(times, unit="ms", utc=True)})
+    gps_t = np.arange(start_t, start_t + 60000, 1000)
+    gps_df = pd.DataFrame(
+        {
+            "t": gps_t,
+            "time": pd.to_datetime(gps_t, unit="ms", utc=True),
+            "lat": 22.3193 + np.linspace(0, 0.01, 60),
+            "lon": 114.1694 + np.linspace(0, 0.01, 60),
+            "speed": np.random.uniform(10, 20, 60),
+        }
+    )
+    return imu_df, gps_df
+
+
+def test_features_validate_and_keep_stored_shape():
+    from app.features import TripFeatures
+
+    start_t = 1000000000000
+    times = np.arange(start_t, start_t + 60000, 20)
+    imu_df = pd.DataFrame({"t": times, "time": pd.to_datetime(times, unit="ms", utc=True)})
+    gps_t = np.arange(start_t, start_t + 60000, 1000)
+    gps_df = pd.DataFrame(
+        {
+            "t": gps_t,
+            "time": pd.to_datetime(gps_t, unit="ms", utc=True),
+            "lat": 22.3193 + np.linspace(0, 0.01, 60),
+            "lon": 114.1694 + np.linspace(0, 0.01, 60),
+            "speed": np.random.uniform(10, 20, 60),
+        }
+    )
+    raw = _calculate_features(imu_df, gps_df, [])
+
+    stored = TripFeatures.model_validate(raw).model_dump()
+
+    assert list(stored) == list(raw)
+    assert list(stored["events_per_100km"]) == list(raw["events_per_100km"])
+    assert list(stored["route"][0]) == ["t", "lat", "lon", "speed"]
+
+
+def test_validate_features_invalid_raises_short_pipeline_error():
+    imu_df, gps_df = _minimal_frames()
+    raw = _calculate_features(imu_df, gps_df, [])
+    raw["night_driving_share"] = 1.5
+
+    with pytest.raises(PipelineError) as exc:
+        _validate_features(raw)
+
+    assert str(exc.value) == "feature contract violated: night_driving_share"
+    assert "\n" not in str(exc.value)

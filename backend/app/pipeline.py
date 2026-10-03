@@ -6,11 +6,13 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from pydantic import ValidationError
 from scipy import signal
 
 from app.classify import classify_trip
 from app.config import get_settings
 from app.database import SessionLocal
+from app.features import TripFeatures
 from app.model import confidence_to_score, predict, score_to_tier
 from app.models import Event, Incident, Trip, TripFeature, TripScore
 
@@ -24,6 +26,15 @@ class PipelineError(Exception):
 
 class QualityCheckError(PipelineError):
     pass
+
+
+def _validate_features(raw: dict[str, Any]) -> dict[str, Any]:
+    """Validate computed features against TripFeatures; return the storable dict."""
+    try:
+        return TripFeatures.model_validate(raw).model_dump()
+    except ValidationError as e:
+        fields = ", ".join(".".join(str(p) for p in err["loc"]) for err in e.errors())
+        raise PipelineError(f"feature contract violated: {fields}") from e
 
 
 def _load_chunk(trip_id: str, seq: int) -> dict[str, Any]:
@@ -580,7 +591,7 @@ def process_trip(trip_id: str) -> None:
             logger.warning(f"Crash detected in trip {trip_id}: {crash_data['peak_g']:.2f}g")
 
         # Calculate features
-        features = _calculate_features(imu_df, gps_df, events)
+        features = _validate_features(_calculate_features(imu_df, gps_df, events))
 
         # Save events
         for event_data in events:

@@ -498,7 +498,11 @@ def create_incident(
         lat=request.lat,
         lon=request.lon,
         peak_g=request.peak_g,
-        sensor_snapshot=request.sensor_snapshot,
+        sensor_snapshot=(
+            request.sensor_snapshot.model_dump(exclude_unset=True)
+            if request.sensor_snapshot
+            else None
+        ),
     )
     db.add(incident)
     db.commit()
