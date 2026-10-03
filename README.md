@@ -329,6 +329,8 @@ cd backend && uv run python scripts/export_openapi.py   # writes contract/openap
 
 ### Mobile app
 
+Coordinates never leave the phone: GPS is used on-device for speed only.
+
 ```bash
 cd mobile
 npm install
@@ -409,7 +411,7 @@ contract in `backend/contract/openapi.json`.
 | Ingestion | GET | `/v1/trips/{trip_id}/status` | driver | `uploading`, `processing`, `done` or `failed` (+ `failure_reason`) |
 | Driver reports | GET | `/v1/me/summary` | driver | 90-day score, confidence, tier, premium multiplier, trend, trip count, distance |
 | Driver reports | GET | `/v1/me/trips` | driver | Trip list (`limit` 1..200, `offset`), with type, score, `needs_confirmation` |
-| Driver reports | GET | `/v1/me/trips/{trip_id}` | driver | Trip detail: score, events, downsampled route (about 100 points), text explanation |
+| Driver reports | GET | `/v1/me/trips/{trip_id}` | driver | Trip detail: score, events, text explanation (no location data) |
 | Driver reports | POST | `/v1/me/trips/{trip_id}/label` | driver | Label a trip `driver` or `passenger` (user label wins over auto-classification) |
 | Incidents | POST | `/v1/me/incidents` | driver | Create an incident (crash) from the client |
 | Incidents | POST | `/v1/me/incidents/{incident_id}/confirm` | driver | Confirm as `ok`, `help_needed` or `no_response` |
@@ -433,10 +435,14 @@ Chunk payload (`t` is epoch milliseconds; accelerometer in g, gyroscope in rad/s
 {
   "seq": 0,
   "imu": [{"t": 1760000000000, "ax": 0.0, "ay": 0.0, "az": 1.0, "gx": 0.0, "gy": 0.0, "gz": 0.0}],
-  "gps": [{"t": 1760000000000, "lat": 22.28, "lon": 114.15, "speed": 8.3, "accuracy": 5.0}],
+  "gps": [{"t": 1760000000000, "speed": 8.3, "accuracy": 5.0}],
   "car_connected": true
 }
 ```
+
+Coordinates never leave the phone: GPS is used on-device for speed only. A `gps` sample with
+`lat`, `lon` or `lng` (or any unknown field), and an incident with coordinates, is rejected
+with 422.
 
 ## 7. Processing pipeline
 

@@ -84,7 +84,6 @@ def _build_chunks(trip_type: str, duration_s: int) -> list[dict[str, Any]]:
     fwd = np.gradient(v)  # m/s^2 per second
 
     start_ms = int(time.time() * 1000)
-    lat, lon = 22.3193 + random.uniform(-0.03, 0.03), 114.1694 + random.uniform(-0.03, 0.03)
     heading = random.uniform(0, 2 * math.pi)
 
     chunks = []
@@ -104,13 +103,9 @@ def _build_chunks(trip_type: str, duration_s: int) -> list[dict[str, Any]]:
                     }
                 )
             heading += yaw[s]
-            lat += v[s] * math.cos(heading) / 111320.0
-            lon += v[s] * math.sin(heading) / (111320.0 * math.cos(math.radians(lat)))
             gps.append(
                 {
                     "t": start_ms + s * 1000,
-                    "lat": lat,
-                    "lon": lon,
                     "speed": max(0.0, v[s] + random.gauss(0, 0.2)),
                     "heading": math.degrees(heading) % 360,
                     "accuracy": random.uniform(3, 10),

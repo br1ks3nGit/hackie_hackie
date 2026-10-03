@@ -12,6 +12,8 @@ from app.pipeline import (
     _resample_imu,
     _validate_features,
 )
+from app.pipeline.errors import QualityCheckError
+from app.pipeline.loading import _quality_check
 
 
 def _speed_df(speeds, step_ms=1000, start_t=1000000000000):
@@ -31,10 +33,32 @@ def test_calculate_distance_km_trapezoid():
     assert _calculate_distance_km(gps_df) == pytest.approx(0.1)
 
 
-def test_calculate_distance_km_ignores_bad_speeds():
+def test_calculate_distance_km_forward_fills_bad_speeds():
     gps_df = _speed_df([10.0, None, -5.0, 10.0])
-    # intervals: (10+0)/2 + (0+0)/2 + (0+10)/2 = 10 m
-    assert _calculate_distance_km(gps_df) == pytest.approx(0.01)
+    # missing/negative speeds repeat the previous valid sample: 10 m/s over 3 s = 30 m
+    assert _calculate_distance_km(gps_df) == pytest.approx(0.03)
+
+
+def test_calculate_distance_km_leading_missing_speed_is_zero():
+    gps_df = _speed_df([None, 10.0, 10.0])
+    # first interval (0+10)/2 = 5 m, second 10 m
+    assert _calculate_distance_km(gps_df) == pytest.approx(0.015)
+
+
+def test_calculate_distance_km_without_speed_column():
+    gps_df = _speed_df([10.0] * 5).drop(columns=["speed"])
+    assert _calculate_distance_km(gps_df) == 0.0
+
+
+def test_quality_check_reports_missing_speed_data():
+    n = 1000
+    imu_df = pd.DataFrame({"t": [1000000000000 + i * 100 for i in range(n)]})
+    for gps_df in (
+        _speed_df([None] * 20),
+        _speed_df([10.0] * 20).drop(columns=["speed"]),
+    ):
+        with pytest.raises(QualityCheckError, match="No GPS speed data"):
+            _quality_check(imu_df, gps_df)
 
 
 def test_calculate_distance_km_caps_gaps():
@@ -240,3 +264,19 @@ def test_validate_features_invalid_raises_short_pipeline_error():
 
     assert str(exc.value) == "feature contract violated: night_driving_share"
     assert "\n" not in str(exc.value)
+
+
+def test_load_all_chunks_without_speed_gives_missing_speeds(tmp_path, monkeypatch):
+    import gzip
+    import json
+
+    from app.pipeline import loading
+
+    monkeypatch.setattr(loading.settings, "data_dir", str(tmp_path))
+    trip_dir = tmp_path / "trip-x"
+    trip_dir.mkdir()
+    chunk = {"imu": [{"t": 1000000000000}], "gps": [{"t": 1000000000000}, {"t": 1000000001000}]}
+    with gzip.open(trip_dir / "0.json.gz", "wt", encoding="utf-8") as f:
+        json.dump(chunk, f)
+    _imu, gps_df, _bt = loading._load_all_chunks("trip-x")
+    assert gps_df["speed"].isna().all()

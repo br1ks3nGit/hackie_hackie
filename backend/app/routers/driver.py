@@ -8,7 +8,6 @@ from app.pipeline import process_trip
 from app.schemas import (
     DriverSummaryResponse,
     EventResponse,
-    RoutePoint,
     TripDetailResponse,
     TripLabelRequest,
     TripLabelResponse,
@@ -129,12 +128,6 @@ def get_my_trip_detail(
     events = trip.events
     features = trip.features.features if trip.features else {}
 
-    route = []
-    if trip.features and "route" in features:
-        route_points = features["route"]
-        step = max(1, len(route_points) // 100)
-        route = [RoutePoint(**p) for p in route_points[::step]]
-
     explanation = generate_explanation(events, features) if score else None
 
     return TripDetailResponse(
@@ -151,11 +144,8 @@ def get_my_trip_detail(
                 type=e.type,
                 time=e.time,
                 peak_g=e.peak_g,
-                lat=e.lat,
-                lon=e.lon,
             )
             for e in events
         ],
-        route=route,
         explanation=explanation,
     )

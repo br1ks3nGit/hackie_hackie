@@ -25,8 +25,6 @@ export interface TripChunkRequest {
   }>;
   gps: Array<{
     t: number;
-    lat: number;
-    lon: number;
     speed?: number;
     heading?: number;
     accuracy?: number;
@@ -76,8 +74,6 @@ export interface EventResponse {
   type: string;
   time: string;
   peak_g?: number;
-  lat?: number;
-  lon?: number;
 }
 
 export interface TripDetailResponse {
@@ -90,7 +86,6 @@ export interface TripDetailResponse {
   confidence?: number;
   tier?: string;
   events: EventResponse[];
-  route: Array<{ lat: number; lon: number; speed?: number }>;
   explanation?: string;
 }
 
