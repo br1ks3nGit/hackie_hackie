@@ -29,10 +29,11 @@ multiplier between 0.80 and 1.30. The driver sees their score and trip explanati
 app; the insurer sees drivers by anonymous id with tier, multiplier and event rates. No
 protected attributes (age, gender, etc.) are used, and a driver can delete all their data.
 
-Status: the backend API, pipeline, classification, scoring and a minimal mobile app work end
-to end against synthetic and real sensor data. The whole stack (API + PostgreSQL) runs with
-`docker compose up`. The insurer web dashboard is planned but not built yet (see
-[Roadmap](#13-roadmap)); today the insurer views are API endpoints only.
+Status: the backend API, pipeline, classification, scoring, the insurer web dashboard and the
+mobile app (onboarding with consent, Home / Trips / Coach / Privacy, English and Chinese) work
+end to end against synthetic and real sensor data. The whole stack (API + PostgreSQL + dashboard)
+runs with `docker compose up`. Still unbuilt: automatic car-audio and activity detection (phase H),
+dashboard login hardening, and rewritten handoff docs (G1); see [Roadmap](#13-roadmap).
 
 ## 2. How it works
 
@@ -113,10 +114,12 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 |   |   |-- model.py             model plug-in point, FEATURE_ORDER, score/tier/multiplier
 |   |   `-- routers/
 |   |       |-- ingestion.py     register, consent, trip start / chunks / end / status
-|   |       |-- driver.py        /me summary, trips, trip detail, labelling
+|   |       |-- driver.py        /me summary, trips, trip detail, labelling, DELETE /me
 |   |       |-- insurer.py       /insurer overview, drivers, driver detail
 |   |       |-- incidents.py     /me/incidents create, confirm, list
-|   |       `-- admin.py         reprocess a trip, delete my data
+|   |       |-- dashboard*.py    insurer dashboard pages (login, overview, drivers, trips, incidents,
+|   |       |                    users, API keys); templates in app/templates/
+|   |       `-- admin.py         reprocess a trip
 |   |-- Dockerfile               API image (uv, non-root user)
 |   |-- migrations/              Alembic env + versions/ (0001_initial)
 |   |-- scripts/                 seed.py, simulate.py, export_openapi.py
@@ -129,12 +132,16 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 |   |-- pyproject.toml, uv.lock  dependencies and tool config (uv)
 |   `-- .env.example             environment template
 `-- mobile/                      Expo / React Native app
-    |-- App.tsx                  single screen: register, record, score, last trip
+    |-- App.tsx                  onboarding, then tab bar: Home, Trips, Coach, Privacy
     |-- app.json                 permissions (location, motion, background)
     `-- src/
         |-- api/client.ts        typed API client (base URL from src/config.ts)
         |-- sensors/SensorManager.ts   accelerometer / gyroscope / GPS-speed subscriptions
         |-- sensors/TripDetector.ts    trip start/end by speed, chunking and upload
+        |-- screens/             Onboarding, Home, Trips, Trip detail, Coach, Privacy
+        |-- i18n/                en, zh-CN, zh-HK strings and language picker
+        |-- reminders.ts         daily trip reminder (expo-notifications)
+        |-- theme.ts, ui.tsx     BT StyleSheet theme and shared primitives
         `-- types.ts             sensor sample types
 ```
 
@@ -343,8 +350,18 @@ npx expo start        # or: npm run ios / npm run android
 npm run ts:check      # TypeScript check
 ```
 
-The app registers a driver on first launch, records consent automatically (version "1.0"),
-stores the id and API key in AsyncStorage, and shows a score plus the last trip.
+On first launch the app shows an onboarding flow with a consent screen; it registers the driver
+and records consent (version "1.0") only after the user agrees, then stores the id and API key in
+AsyncStorage. After that a bottom tab bar offers:
+
+- **Home**: score, tier, premium multiplier (shown as a saving), recording switch, recent trips.
+- **Trips** and **Trip detail**: trip list with score explanations, plus the "Trips to confirm" list.
+- **Coach**: driving tips.
+- **Privacy**: what data is collected, daily trip reminder (local notification), and "delete all my
+  data" with an inline confirm (`DELETE /v1/me`); deletion is blocked while recording.
+
+The UI is available in English, Simplified Chinese (zh-CN) and Traditional Chinese (zh-HK), with a
+language picker.
 
 Turn on the "I'm driving" switch before you drive. While it is on, every uploaded chunk carries
 `car_connected: true`; while it is off, every chunk carries `car_connected: false`. The choice is
@@ -781,7 +798,6 @@ This is a hackathon POC. Be aware of the following.
   instances need object storage (roadmap D5).
 - The API container binds `0.0.0.0:8000` on purpose so phones on the LAN can reach it; there
   is no TLS or reverse proxy.
-- No insurer web dashboard yet (phase F). Insurer views are API endpoints.
 - Timestamps are timezone-aware UTC (`timestamptz`; API datetimes end in `Z`). Night driving
   converts to Asia/Hong_Kong.
 - `backend/.env.example` is still on SQLite; set the PostgreSQL `DATABASE_URL` and
@@ -801,15 +817,14 @@ This is a hackathon POC. Be aware of the following.
 **Mobile**
 - `car_connected` comes from a manual "I'm driving" toggle (E2), not from the car's Bluetooth
   or audio. If the user forgets to turn it on, the trip is typically `unknown` and does not count toward the score. Native car-audio detection is planned (H2).
-- The app has no screens for incidents or data deletion, although the
-  API supports them.
-- Registration and consent happen automatically on first launch; there is no consent screen.
+- The app has no screens for incidents, although the API supports them. Data deletion is on the
+  Privacy screen.
 - There is no offline queue; a failed final upload is retried 3 times and then dropped.
 - Styling uses a `StyleSheet` theme; there is no dark mode.
 
 **Security and data**
-- Anyone can call `register`; there is no rate limiting. One shared insurer key, no
-  per-user insurer accounts.
+- Anyone can call `register`; there is no rate limiting. Dashboard login has no rate limiting or
+  lockout yet (roadmap "Later" item).
 - The model is loaded with `pickle`; only deploy trusted model files.
 - Insurer listing computes each driver's score in a loop, which will not scale beyond
   hundreds of drivers.
@@ -828,12 +843,13 @@ Full plan and status in [docs/roadmap.md](docs/roadmap.md). One line is one smal
   readable schema (allowed values, field docs, TripFeatures, data-model.md), A9 foreign-key
   indexes, A7 size limits (pipeline package, routers split), C2 pipeline error path fix,
   C1 incident trip ownership check, E1 configurable mobile API base URL.
-- Next (phase A): A11 cleanups.
-- Mobile (phase E): send `car_connected`, trip labelling (done, E3),
-  BT redesign (phase M).
-- Insurer dashboard (phase F): staff login, overview, drivers list and detail, trip detail,
-  incidents (Jinja2 + HTMX + Alpine.js + UnoCSS, served by the API).
-- Docs (phase G): regenerate handoff and contracts from the OpenAPI export.
+- Done: A11 cleanups; mobile phase E (`car_connected` toggle, trip labelling) and phase M (BT
+  redesign: StyleSheet theme, i18n, tabs, onboarding with consent, Privacy delete, daily
+  reminders); privacy Option B (no coordinates) and `DELETE /v1/me`; insurer dashboard phase F
+  (staff login, overview, drivers, trip detail, incidents; Jinja2 + HTMX + Alpine.js + UnoCSS).
+- Open: dashboard hardening (login rate limiting, session revocation, CSP); docs (phase G):
+  regenerate handoff and contracts from the OpenAPI export; native signals (phase H: car audio
+  `car_connected`, OS activity recognition, dev build).
 
 Backend-only details: [backend/README.md](backend/README.md).
 

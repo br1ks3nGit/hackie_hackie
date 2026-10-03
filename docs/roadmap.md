@@ -73,7 +73,7 @@ Open (the director escalates these when the increment needs them):
 - [x] M6 Daily reminders via expo-notifications.
 
 ## Phase F - Insurer dashboard
-- [x] F1 Basic staff login (env credentials, hashed password), cookie session, CSRF, base layout,
+- [x] F1 Basic staff login (staff users in Postgres with hashed passwords, managed on the Users screen / `scripts/manage_users.py`), cookie session, CSRF, base layout,
       UnoCSS build.
 - [x] F2 Overview page: totals, tier distribution, average multiplier (HTMX partials).
 - [x] F3 Drivers list with filter, sort, pagination; driver detail.
