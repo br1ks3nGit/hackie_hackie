@@ -37,7 +37,9 @@ export async function startSensors(
     {
       accuracy: Location.Accuracy.BestForNavigation,
       timeInterval: 1000,
-      distanceInterval: 10,
+      // 0 = keep a 1 Hz fix while stopped; a distance filter leaves GPS gaps
+      // at red lights that fail the backend's 30 s max-gap quality check
+      distanceInterval: 0,
       mayShowUserSettingsDialog: true,
     },
     (location) => {
