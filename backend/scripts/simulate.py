@@ -39,7 +39,7 @@ def _speed_profile(duration_s: int, p: dict[str, float]) -> np.ndarray:
     v = np.zeros(duration_s)
     speed, target = 0.0, p["cruise"]
     stop_every = 120
-    brake_times = set(random.sample(range(60, duration_s - 30), p["harsh_brakes"]))
+    brake_times = set(random.sample(range(60, duration_s - 30), int(p["harsh_brakes"])))
     hold = 0
     braking_hard = 0
     for s in range(duration_s):
