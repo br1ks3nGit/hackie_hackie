@@ -286,6 +286,15 @@ mid-trip changes the share of "on" chunks from the next chunk. The backend needs
 "on" chunks to classify the trip as `driver`; otherwise it is typically `unknown` (transit
 rules still apply) and goes to labelling.
 
+#### Confirm trips
+
+Trips the backend cannot classify (`needs_confirmation`) appear in a "Trips to confirm" list
+with their time and distance. Tap "I was driving" or "I was a passenger"
+(`POST /v1/me/trips/{trip_id}/label`). The app shows "Added to your score" or "Removed from
+your score", drops the row and refreshes the score; a driver label reprocesses the trip in the
+background, so the score and list refresh again after a few seconds. The list loads on start and
+after each trip ends.
+
 #### Point the app at the backend
 
 The base URL comes from `EXPO_PUBLIC_API_BASE_URL` (default `http://localhost:8000`, which
@@ -691,7 +700,7 @@ This is a hackathon POC. Be aware of the following.
 - `car_connected` comes from a manual "I'm driving" toggle (E2), not from the car's Bluetooth
   or audio. If the user forgets to turn it on, the trip is typically `unknown` (transit rules still
   apply) and does not count toward the score. Native car-audio detection is planned (H2).
-- The app has no screens for labelling trips (E3), incidents, or data deletion, although the
+- The app has no screens for incidents or data deletion, although the
   API supports them.
 - Registration and consent happen automatically on first launch; there is no consent screen.
 - Offline queueing helpers exist in `src/storage/TripStorage.ts` but are not used; a failed
@@ -723,7 +732,7 @@ Full plan and status in [docs/roadmap.md](docs/roadmap.md). One line is one smal
   indexes, A7 size limits (pipeline package, routers split), C2 pipeline error path fix,
   C1 incident trip ownership check, E1 configurable mobile API base URL.
 - Next (phase A): A11 cleanups.
-- Mobile (phase E): send `car_connected`, optional trip labelling,
+- Mobile (phase E): send `car_connected`, trip labelling (done, E3),
   NativeWind.
 - Insurer dashboard (phase F): staff login, overview, drivers list and detail, trip map,
   incidents (Jinja2 + HTMX + Alpine.js + UnoCSS, served by the API).

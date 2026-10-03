@@ -46,9 +46,9 @@ Open (the director escalates these when the increment needs them):
       on every API schema, typed models instead of bare dicts, a `TripFeatures` Pydantic model for
       the pipeline/model contract, table docstrings and column comments, `docs/data-model.md` with
       a Mermaid ER diagram and allowed values.
-- [ ] A11 Small cleanups (single `score_to_tier` done in A7): mobile
-      `client.ts` types match the API (`TripListItem` fields), remove legacy `mobile/src/types.ts`
-      types and unused deps, `backend/.env.example` on Postgres (user edit: file is agent-denied).
+- [ ] A11 Small cleanups (single `score_to_tier` done in A7): mobile `client.ts` types match the
+      API (`client.ts` `TripListItem` types done in E3), remove legacy `mobile/src/types.ts` types
+      and unused deps, `backend/.env.example` on Postgres (user edit: file is agent-denied).
 
 ## Phase C - Known bugs
 - [x] C1 `POST /v1/me/incidents`: check the trip belongs to the driver.
@@ -58,7 +58,7 @@ Open (the director escalates these when the increment needs them):
 - [x] E1 Config-driven `API_BASE` (Expo config / env) so the app works on a real phone.
 - [x] E2 Send `car_connected` with chunks so real trips score automatically: manual "I'm driving"
       toggle for now; automatic car-audio detection is H2.
-- [ ] E3 (optional) Label unknown trips (driver / passenger).
+- [x] E3 Label unknown trips (driver / passenger).
 - [ ] E4 NativeWind setup and design tokens.
 
 ## Phase F - Insurer dashboard

@@ -50,12 +50,26 @@ export interface DriverSummaryResponse {
   total_distance_km_90d: number;
 }
 
+export type TripType = 'driver' | 'passenger' | 'transit' | 'unknown';
+export type LabelSource = 'bluetooth' | 'rules' | 'user';
+export type Tier = 'A' | 'B' | 'C' | 'D' | 'E';
+
 export interface TripListItem {
   trip_id: string;
   started_at: string;
   distance_km: number;
-  score?: number;
-  tier?: string;
+  score: number | null;
+  tier: Tier | null;
+  trip_type: TripType | null;
+  needs_confirmation: boolean;
+  label_source: LabelSource | null;
+  transit_line: string | null;
+}
+
+export interface TripLabelResponse {
+  trip_id: string;
+  trip_type: 'driver' | 'passenger';
+  status: 'added_to_score' | 'removed_from_score' | 'relabelled';
 }
 
 export interface EventResponse {
@@ -143,4 +157,15 @@ export async function getMyTrips(apiKey: string, limit: number = 50, offset: num
 
 export async function getTripDetail(tripId: string, apiKey: string): Promise<TripDetailResponse> {
   return request(`/me/trips/${tripId}`, {}, apiKey);
+}
+
+export async function labelTrip(
+  tripId: string,
+  tripType: 'driver' | 'passenger',
+  apiKey: string,
+): Promise<TripLabelResponse> {
+  return request(`/me/trips/${tripId}/label`, {
+    method: 'POST',
+    body: JSON.stringify({ trip_type: tripType }),
+  }, apiKey);
 }
