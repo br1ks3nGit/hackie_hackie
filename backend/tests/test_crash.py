@@ -68,8 +68,8 @@ def test_crash_detected():
     crash = crashes[0]
     assert crash["type"] == "crash"
     assert crash["peak_g"] > CRASH_PEAK_G
-    assert crash["lat"] is not None
-    assert crash["lon"] is not None
+    assert "lat" not in crash
+    assert "lon" not in crash
 
 
 def test_no_crash_normal_driving():

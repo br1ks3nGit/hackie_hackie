@@ -28,6 +28,14 @@ router = APIRouter()
 settings = get_settings()
 
 
+COORDINATE_KEYS = ("lat", "lon", "lng")
+
+
+def _strip_coordinates(sample: dict) -> dict:
+    """Drop location fields from a GPS sample so coordinates never reach disk."""
+    return {k: v for k, v in sample.items() if k not in COORDINATE_KEYS}
+
+
 @router.post("/drivers/register", response_model=DriverRegisterResponse)
 def register_driver(
     request: DriverRegisterRequest = DriverRegisterRequest(),
@@ -108,7 +116,7 @@ def upload_chunk(
     chunk_data = {
         "seq": chunk.seq,
         "imu": [s.model_dump() for s in chunk.imu],
-        "gps": [s.model_dump() for s in chunk.gps],
+        "gps": [_strip_coordinates(s.model_dump()) for s in chunk.gps],
         "car_connected": chunk.car_connected,
     }
 

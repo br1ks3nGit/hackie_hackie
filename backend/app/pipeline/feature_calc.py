@@ -43,20 +43,6 @@ def _calculate_features(
     max_speed = float(speeds.max())
     speeding_share = float((speeds > SPEEDING_THRESHOLD_MS).mean())
 
-    # Downsampled route for the trip detail endpoint (up to ~100 points)
-    route = []
-    if len(gps_df) > 0:
-        step = max(1, (len(gps_df) + 99) // 100)
-        for _, row in gps_df.iloc[::step].iterrows():
-            route.append(
-                {
-                    "t": int(row["t"]),
-                    "lat": float(row["lat"]),
-                    "lon": float(row["lon"]),
-                    "speed": float(row["speed"]) if pd.notna(row["speed"]) else None,
-                }
-            )
-
     return {
         "distance_km": round(distance_km, 2),
         "duration_min": round(duration_min, 2),
@@ -65,5 +51,4 @@ def _calculate_features(
         "mean_speed_ms": round(mean_speed, 2),
         "max_speed_ms": round(max_speed, 2),
         "speeding_time_share": round(speeding_share, 4),
-        "route": route,
     }

@@ -52,7 +52,7 @@ to end against synthetic and real sensor data. The whole stack (API + PostgreSQL
  +-------------------------------------------------------------------+
  | Pipeline (app/pipeline/, app/classify.py)                         |
  |  1. load chunks -> IMU / GPS tables, bluetooth ratio              |
- |  2. classify trip: transit | driver | unknown (+ driver_likelihood)|
+ |  2. classify trip: driver | unknown (+ driver_likelihood)        |
  |       transit or passenger -> saved as done, NOT scored           |
  |  3. quality checks (samples, GPS gap, duration, distance)         |
  |  4. resample 50 Hz -> remove gravity -> car frame -> low-pass     |
@@ -108,7 +108,7 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 |   |   |-- pipeline/            loading + quality checks, signal, events + crash, feature_calc,
 |   |   |                        process (process_trip)
 |   |   |-- services/scoring.py  driver score, scoreable trips, passenger stats, explanations
-|   |   |-- classify.py          transit / driver / unknown classification
+|   |   |-- classify.py          driver / unknown classification
 |   |   |-- model.py             model plug-in point, FEATURE_ORDER, score/tier/multiplier
 |   |   `-- routers/
 |   |       |-- ingestion.py     register, consent, trip start / chunks / end / status
@@ -119,7 +119,6 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
 |   |-- Dockerfile               API image (uv, non-root user)
 |   |-- migrations/              Alembic env + versions/ (0001-0004)
 |   |-- scripts/                 seed.py, simulate.py, export_openapi.py
-|   |-- data/transit_lines.geojson   HK transit lines for classification
 |   |-- data/raw/                raw sensor chunks at runtime (gitignored)
 |   |-- contract/openapi.json    exported OpenAPI contract (+ examples/)
 |   |-- docker/initdb.sql        creates the drivescore_test database on first start
@@ -434,8 +433,7 @@ or in the `CONFIG` dict in `app/classify.py`.
 
 1. Load all chunk files; drop duplicate timestamps; sort; compute the Bluetooth ratio.
 2. Classify the trip (unless the user already labelled it). Classification runs **before**
-   the quality check so an underground MTR ride, which has a long GPS gap, becomes "transit"
-   instead of "failed".
+   the quality check.
 3. Transit and user-labelled passenger trips are stored as `done` and not scored.
 4. Quality check, signal processing, events, crash detection, features, model, score.
 
@@ -499,17 +497,15 @@ Evaluated in this order; the first match wins. Thresholds are in `CONFIG`.
 
 | Order | Rule | Result |
 |---|---|---|
-| 1 | At least 70% of GPS points lie within 30 m of one transit line in `data/transit_lines.geojson` | `transit`, `label_source=rules`, `transit_line` = line name |
-| 2 | A GPS gap longer than 30 s whose before and after points are both within 30 m of an underground line | `transit`, `transit_line="underground (GPS gap)"` |
-| 3 | Fraction of chunks with `car_connected=true` is above 0.80 | `driver`, `label_source=bluetooth` |
-| 4 | Otherwise | `unknown`, with `driver_likelihood` |
+| 1 | Fraction of chunks with `car_connected=true` is above 0.80 | `driver`, `label_source=bluetooth` |
+| 2 | Otherwise | `unknown`, with `driver_likelihood` |
 
 `driver_likelihood` = 0.3 base, plus 0.5 if the mean variance of gyro x/y/z is below 0.01
 (a stable, probably mounted phone), capped at 1.0. It is informational; it does not decide
 scoring.
 
-The geojson contains 9 hand-drawn HK routes (seven MTR / rail lines, the tram and the Star
-Ferry), accurate enough for a demo, not for production.
+Transit is no longer assigned automatically (it needed GPS coordinates, which the backend no
+longer uses or stores); `transit` stays valid for legacy rows and user labels.
 
 Users can override any label with `POST /v1/me/trips/{id}/label` (`driver` or `passenger`).
 User labels are never overwritten by reprocessing. Labelling an unscored finished trip as

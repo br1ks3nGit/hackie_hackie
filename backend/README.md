@@ -211,7 +211,7 @@ backend/
 │   ├── model.py          # Model plugin interface
 │   ├── pipeline/         # Processing pipeline package (process.py has process_trip)
 │   ├── services/         # Scoring helpers shared by the report routers
-│   ├── classify.py       # Trip classification (transit / driver / unknown)
+│   ├── classify.py       # Trip classification (driver / unknown)
 │   └── routers/
 │       ├── ingestion.py  # Trip upload endpoints
 │       ├── driver.py     # /me reports and labelling
@@ -228,7 +228,6 @@ backend/
 │   └── export_openapi.py # Export OpenAPI JSON
 ├── tests/                # pytest suite (api, pipeline, classify, crash, model, migrations, config)
 ├── data/
-│   ├── transit_lines.geojson  # HK transit lines used by classification
 │   └── raw/              # Raw sensor chunks (gitignored)
 ├── contract/
 │   └── openapi.json      # Exported API contract

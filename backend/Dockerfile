@@ -16,7 +16,6 @@ COPY app ./app
 COPY migrations ./migrations
 COPY alembic.ini ./
 COPY scripts ./scripts
-COPY data/transit_lines.geojson ./data/transit_lines.geojson
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 USER app

@@ -4,7 +4,6 @@ import pandas as pd
 from app.classify import (
     CONFIG,
     _calculate_driver_likelihood,
-    _check_transit_route_match,
     classify_trip,
 )
 
@@ -44,42 +43,23 @@ def _make_imu_df(n=500, gyro_variance=0.001):
     )
 
 
-def test_transit_mtr_line():
-    """Trip along the Island Line should be classified as transit."""
-    # Island Line coordinates from the GeoJSON
-    mtr_points = [
-        (22.2870, 114.1315),
-        (22.2846, 114.1400),
-        (22.2840, 22.2840),
-        (22.2840, 114.1487),
-        (22.2829, 114.1581),
-        (22.2819, 114.1694),
-        (22.2788, 114.1710),
-        (22.2780, 114.1750),
-    ]
-    # Use points very close to the MTR line
-    gps_df = _make_gps_df([(p[0], p[1]) for p in mtr_points])
+def test_transit_route_is_never_assigned_automatically():
+    """Even a GPS trace along an MTR line is not auto-classified as transit."""
+    mtr_points = [(22.2819 + i * 0.01, 114.1694) for i in range(10)]
+    gps_df = _make_gps_df(mtr_points)
     imu_df = _make_imu_df()
 
-    result = classify_trip(gps_df, imu_df)
-    assert result["trip_type"] == "transit"
-    assert result["label_source"] == "rules"
-    assert result["transit_line"] is not None
+    for ratio in (None, 0.0, 0.5, 0.9):
+        result = classify_trip(gps_df, imu_df, bluetooth_connected_ratio=ratio)
+        assert result["trip_type"] != "transit"
+        assert result["transit_line"] is None
 
 
-def test_transit_route_match_directly():
-    """Direct test of transit route matching."""
-    # Points along the Tsuen Wan Line
-    points = [
-        (22.2819, 114.1694),
-        (22.2950, 114.1694),
-        (22.3048, 114.1694),
-        (22.3165, 114.1694),
-    ]
-    gps_df = _make_gps_df(points)
-    is_transit, line_name = _check_transit_route_match(gps_df)
-    assert is_transit
-    assert line_name is not None
+def test_classify_works_without_coordinates():
+    """Classification must not need lat/lon columns."""
+    gps_df = _make_gps_df([(0, 0)] * 10).drop(columns=["lat", "lon"])
+    result = classify_trip(gps_df, _make_imu_df(), bluetooth_connected_ratio=None)
+    assert result["trip_type"] == "unknown"
 
 
 def test_bluetooth_driver():

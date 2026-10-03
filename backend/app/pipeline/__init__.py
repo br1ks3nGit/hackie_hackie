@@ -9,7 +9,6 @@ from app.pipeline.events import (
     SPEEDING_THRESHOLD_MS,
     _detect_crashes,
     _detect_events,
-    _find_nearest_gps,
     _find_peaks,
     _find_speeding_runs,
 )
@@ -41,7 +40,6 @@ __all__ = [
     "_calculate_features",
     "_detect_crashes",
     "_detect_events",
-    "_find_nearest_gps",
     "_find_peaks",
     "_find_speeding_runs",
     "_load_all_chunks",
