@@ -2,5 +2,7 @@
 {% block title %}Overview - DriveScore Insurer{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold text-text">Overview</h1>
-<p class="mt-2 text-text-muted">Portfolio totals and the tier distribution will appear here.</p>
+<div x-data="tierChart" class="mt-4">
+  {% include "partials/overview_stats.html" %}
+</div>
 {% endblock %}

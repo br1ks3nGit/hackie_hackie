@@ -1,0 +1,64 @@
+{%- set swatches = {"A": "bg-tier-a", "B": "bg-tier-b", "C": "bg-tier-c", "D": "bg-tier-d", "E": "bg-tier-e"} -%}
+{%- set badges = {
+  "A": "bg-tier-a-soft text-tier-a-ink",
+  "B": "bg-tier-b-soft text-tier-b-ink",
+  "C": "bg-tier-c-soft text-tier-c-ink",
+  "D": "bg-tier-d-soft text-tier-d-ink",
+  "E": "bg-tier-e-soft text-tier-e-ink",
+} -%}
+<div id="overview-stats" hx-get="/dashboard/partials/overview" hx-trigger="every 30s" hx-target="this" hx-swap="outerHTML" hx-indicator="#overview-loading">
+  <p id="overview-loading" class="htmx-indicator text-sm text-text-muted" aria-hidden="true">Refreshing...</p>
+  <dl class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="card">
+      <dt class="text-sm text-text-muted">Total drivers</dt>
+      <dd class="mt-1 text-3xl font-bold text-text tabular-nums">{{ total_drivers }}</dd>
+    </div>
+    <div class="card">
+      <dt class="text-sm text-text-muted">Trips in last 90 days</dt>
+      <dd class="mt-1 text-3xl font-bold text-text tabular-nums">{{ total_trips_90d }}</dd>
+      <dd class="text-xs text-text-muted">Scoreable trips only</dd>
+    </div>
+    <div class="card">
+      <dt class="text-sm text-text-muted">Average premium multiplier</dt>
+      {% if has_scores %}
+      <dd class="mt-1 text-3xl font-bold text-text tabular-nums">{{ "%.2f"|format(average_multiplier) }}x</dd>
+      {% else %}
+      <dd class="mt-1 text-3xl font-bold text-text">-<span class="sr-only">No data</span></dd>
+      {% endif %}
+    </div>
+  </dl>
+
+  <section class="card mt-4" aria-labelledby="tier-heading">
+    <h2 id="tier-heading" class="text-lg font-semibold text-text">Tier distribution</h2>
+    {% if has_scores %}
+    <p class="text-sm text-text-muted">Scored trips per tier, last 90 days.</p>
+    <div class="mt-4 h-64">
+      <canvas data-tier-chart role="img" aria-label="Scored trips per tier: {% for t in tiers %}{{ t.tier }} {{ t.count }}{% if not loop.last %}, {% endif %}{% endfor %}"></canvas>
+    </div>
+    <script type="application/json" id="tier-data">{{ tiers|tojson }}</script>
+    <div id="tier-table-region" class="mt-4 overflow-x-auto rounded-lg border border-border bg-surface" tabindex="0" role="region" aria-label="Tier distribution data">
+      <table class="w-full text-sm text-left">
+        <caption class="sr-only">Scored trips per tier</caption>
+        <thead class="bg-surface-muted text-text-muted font-medium">
+          <tr><th scope="col" class="px-4 py-3">Tier</th><th scope="col" class="px-4 py-3 text-right">Scored trips</th></tr>
+        </thead>
+        <tbody>
+          {% for t in tiers %}
+          <tr class="hover:bg-surface-muted">
+            <th scope="row" class="px-4 py-3 border-t border-border text-left font-normal">
+              <span class="tier-badge {{ badges[t.tier] }}"><span class="inline-block h-2 w-2 rounded-full {{ swatches[t.tier] }}" aria-hidden="true"></span>{{ t.tier }}</span>
+            </th>
+            <td class="px-4 py-3 border-t border-border text-right tabular-nums">{{ t.count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-12 text-center">
+      <p class="text-lg font-semibold text-text">No scored trips yet</p>
+      <p class="text-sm text-text-muted">The tier distribution appears once drivers have scored trips.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
