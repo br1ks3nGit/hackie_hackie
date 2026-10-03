@@ -82,7 +82,7 @@ set_model(MyModel())
 The backend will call your model every time a trip is uploaded.
 
 ### Input you receive
-- `trip`: `TripUpload` with raw accelerometer, gyroscope, GPS arrays, and metadata
+- `trip`: `TripUpload` with raw accelerometer, gyroscope, GPS speed arrays (no coordinates), and metadata
 - `baseline`: rolling statistics for the user (`distance_km_mean`, `distance_km_std`, etc.) or `None` for a new user
 
 ### Output you return
@@ -126,7 +126,7 @@ GET /drivers/{user_id}/summary
 GET /trips?user_id={user_id}&limit=50&offset=0
 ```
 
-**Trip detail with map events:**
+**Trip detail with events:**
 
 ```
 GET /trips/{trip_id}
@@ -135,7 +135,7 @@ GET /trips/{trip_id}
 ### Key fields to render
 - `overall_score` — headline risk score
 - `recent_trips` — list of scored trips
-- `events` — hard brakes, hard accels, sharp turns with lat/lng for map overlays
+- `events` — hard brakes, hard accels, sharp turns with time and severity
 - `is_outlier` — flag unusual trips
 - `factors` — model features for tooltips and explanations
 

@@ -19,7 +19,8 @@ Built for the bolttech hackathon track in Hong Kong: a usage-based insurance (UB
 premiums follow how a person actually drives rather than who they are.
 
 **Pitch.** A driver installs the app and consents once. From then on the phone records
-accelerometer, gyroscope and GPS during trips and uploads them in small chunks. The backend
+accelerometer, gyroscope and GPS speed (no coordinates) during trips and uploads them in small
+chunks. The backend
 removes noise, works out whether the person was driving (or a passenger),
 detects harsh braking, harsh acceleration, sharp cornering, speeding and possible crashes,
 and turns each trip into features for a risk model. Trip scores roll up into a
@@ -37,7 +38,7 @@ to end against synthetic and real sensor data. The whole stack (API + PostgreSQL
 
 ```
  Phone (Expo app)
- accelerometer 50 Hz, gyroscope 50 Hz, GPS 1 Hz, (car Bluetooth flag)
+ accelerometer 50 Hz, gyroscope 50 Hz, GPS speed 1 Hz (time, speed, accuracy only), (car Bluetooth flag)
         |
         |  POST /v1/trips/start            (needs prior consent)
         |  POST /v1/trips/{id}/chunks      (~60 s chunks, idempotent by seq)
@@ -51,10 +52,10 @@ to end against synthetic and real sensor data. The whole stack (API + PostgreSQL
             v
  +-------------------------------------------------------------------+
  | Pipeline (app/pipeline/, app/classify.py)                         |
- |  1. load chunks -> IMU / GPS tables, bluetooth ratio              |
- |  2. classify trip: driver | unknown (+ driver_likelihood)        |
+ |  1. load chunks -> IMU / GPS-speed tables, bluetooth ratio        |
+ |  2. classify trip: driver | unknown (+ driver_likelihood)         |
  |       transit or passenger -> saved as done, NOT scored           |
- |  3. quality checks (samples, GPS gap, duration, distance)         |
+ |  3. quality checks (samples, GPS-speed gap, duration, distance)   |
  |  4. resample 50 Hz -> remove gravity -> car frame -> low-pass     |
  |  5. detect events: harsh_brake / harsh_accel / sharp_corner /     |
  |     speeding                                                      |
@@ -132,7 +133,7 @@ Trip lifecycle (`trips.status`): `uploading` -> `processing` -> `done` or `faile
     |-- app.json                 permissions (location, motion, background)
     `-- src/
         |-- api/client.ts        typed API client (base URL from src/config.ts)
-        |-- sensors/SensorManager.ts   accelerometer / gyroscope / GPS subscriptions
+        |-- sensors/SensorManager.ts   accelerometer / gyroscope / GPS-speed subscriptions
         |-- sensors/TripDetector.ts    trip start/end by speed, chunking and upload
         `-- types.ts             sensor sample types
 ```
@@ -233,7 +234,7 @@ to reset everything).
 | `DATA_DIR` | `./data/raw` | Where raw gzip chunks are written (`<DATA_DIR>/<trip_id>/<seq>.json.gz`). |
 | `MODEL_PATH` | `./models/model.pkl` | Optional pickled model, loaded once at startup. |
 | `TRIP_MIN_DISTANCE_KM` | `1.0` | Quality check: minimum trip distance. |
-| `TRIP_MAX_GPS_GAP_S` | `30.0` | Quality check: maximum gap between GPS fixes. |
+| `TRIP_MAX_GPS_GAP_S` | `30.0` | Quality check: maximum gap between GPS speed samples. |
 | `TRIP_MIN_DURATION_S` | `60.0` | Quality check: minimum trip duration. |
 
 ### Insurer dashboard
@@ -333,7 +334,7 @@ cd backend && uv run python scripts/export_openapi.py   # writes contract/openap
 
 ### Mobile app
 
-Coordinates never leave the phone: GPS is used on-device for speed only.
+The app reads GPS only for speed (and its accuracy), about once per second while recording. The app sends only time, speed and accuracy (no coordinates); no location is collected, uploaded or stored (no routes, no maps).
 
 ```bash
 cd mobile
@@ -416,7 +417,7 @@ contract in `backend/contract/openapi.json`.
 | Ingestion | POST | `/v1/drivers/register` | none | Create a driver; returns `driver_id`, `api_key` (optional emergency contact in body) |
 | Ingestion | POST | `/v1/consent` | driver | Record PDPO consent (`version`) |
 | Ingestion | POST | `/v1/trips/start` | driver | Open a trip, returns `trip_id`; 403 if no consent |
-| Ingestion | POST | `/v1/trips/{trip_id}/chunks` | driver | Upload one IMU + GPS chunk (`seq`, `imu[]`, `gps[]`, `car_connected`); idempotent per `seq`; only while status is `uploading` |
+| Ingestion | POST | `/v1/trips/{trip_id}/chunks` | driver | Upload one IMU + GPS speed chunk (`seq`, `imu[]`, `gps[]` = GPS speed samples, `car_connected`); idempotent per `seq`; only while status is `uploading` |
 | Ingestion | POST | `/v1/trips/{trip_id}/end` | driver | Close the trip and start background processing |
 | Ingestion | GET | `/v1/trips/{trip_id}/status` | driver | `uploading`, `processing`, `done` or `failed` (+ `failure_reason`) |
 | Driver reports | GET | `/v1/me/summary` | driver | 90-day score, confidence, tier, premium multiplier, trend, trip count, distance |
@@ -450,7 +451,7 @@ Chunk payload (`t` is epoch milliseconds; accelerometer in g, gyroscope in rad/s
 }
 ```
 
-Coordinates never leave the phone: GPS is used on-device for speed only. A `gps` sample with
+The `gps` array holds GPS speed samples only (time, speed, accuracy; no coordinates). A `gps` sample with
 `lat`, `lon` or `lng` (or any unknown field), and an incident with coordinates, is rejected
 with 422.
 
@@ -475,8 +476,8 @@ A failed check sets the trip to `failed` with a readable `failure_reason`.
 | Check | Threshold |
 |---|---|
 | IMU samples | at least 100 |
-| GPS points | at least 10 |
-| Largest GPS gap | at most `TRIP_MAX_GPS_GAP_S` (30 s) |
+| GPS speed samples | at least 10 |
+| Largest GPS speed gap | at most `TRIP_MAX_GPS_GAP_S` (30 s) |
 | Duration (IMU span) | at least `TRIP_MIN_DURATION_S` (60 s) |
 | Distance (integrated GPS speed) | at least `TRIP_MIN_DISTANCE_KM` (1.0 km) |
 
@@ -558,7 +559,7 @@ Stored per trip in `trip_features.features` (JSON). The model sees only the ten 
 | 7 | `speeding_per_100km` | same (speeding runs) |
 | 8 | `mean_speed_ms` | Mean GPS speed (missing speed = 0) |
 | 9 | `max_speed_ms` | Max GPS speed |
-| 10 | `speeding_time_share` | Share of GPS points above 13.9 m/s |
+| 10 | `speeding_time_share` | Share of GPS speed samples above 13.9 m/s |
 
 The stored JSON also holds `events_per_100km` (dict), which is used by the API but is not a model input. The pipeline validates the
 computed features against the `TripFeatures` model in `app/features.py` before storing them.
@@ -699,8 +700,8 @@ forgotten revision.
 Designed with Hong Kong's Personal Data (Privacy) Ordinance in mind. This is a design
 intent for the POC, not legal advice.
 
-- **No coordinates, ever.** Coordinates never leave the phone: GPS is used on-device for
-  speed only. The server stores no locations (the schema has no location columns, and
+- **No coordinates, ever.** GPS is read for speed only (no coordinates).
+  The server stores no locations (the schema has no location columns, and
   `scripts/scrub_coordinates.py` strips any left in old raw chunk files). Requests carrying `lat`, `lon`, `lng` or any
   unknown field are rejected with 422. There are no route maps and no event locations in
   the API or the dashboard. Transit trips are confirmed by the user, not matched to a line.

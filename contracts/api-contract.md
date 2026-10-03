@@ -97,7 +97,7 @@ Build the dashboard against:
 
 - `GET /drivers/{user_id}/summary` for the driver profile view
 - `GET /trips?user_id=...` for trip lists
-- `GET /trips/{trip_id}` for trip detail with map events
+- `GET /trips/{trip_id}` for trip detail with events
 
 All score values are 0–100 where lower is safer.
 
