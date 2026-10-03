@@ -20,7 +20,8 @@ uv sync
 
 ```bash
 cp .env.example .env
-# Edit .env with your database URL and API keys
+# Edit .env: set INSURER_API_KEY, DRIVER_API_KEY_SALT and the PostgreSQL DATABASE_URL / TEST_DATABASE_URL
+# (.env.example is still on SQLite; use postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore)
 ```
 
 ### 3. Start PostgreSQL and migrate
@@ -42,7 +43,7 @@ Schema changes go through Alembic: edit `app/models.py`, then
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-API docs at `http://localhost:8000/docs`.
+API docs at `http://localhost:8000/docs` (field descriptions and examples come from `app/schemas.py`).
 
 ### 5. Seed demo data
 
@@ -67,7 +68,7 @@ docker compose up -d --build
 
 Compose refuses to start `api` if either key is unset. The `api` container waits for the
 healthy `db`, runs `alembic upgrade head`, then serves on `0.0.0.0:8000` (reachable from phones
-on the LAN). Check it with `curl localhost:8000/health` and `docker compose logs api`.
+on the LAN, at `http://<laptop LAN IP>:8000`). Check it with `curl localhost:8000/health` and `docker compose logs api`.
 
 Raw chunks live in the `rawdata` volume (`/data/raw`); put a trained `model.pkl` in the `models`
 volume (`/models`), otherwise the app falls back to its default scoring.
@@ -123,6 +124,8 @@ Mobile App ──POST /v1/trips/{id}/chunks──> Backend
 - `GET /v1/me/summary` → driver score, tier, premium multiplier, trend
 - `GET /v1/me/trips` → list of trips
 - `GET /v1/me/trips/{trip_id}` → trip detail with events and route
+- `POST /v1/me/trips/{trip_id}/label` -> label a trip `driver` or `passenger`
+- `POST /v1/me/incidents`, `POST /v1/me/incidents/{incident_id}/confirm`, `GET /v1/me/incidents` -> crash incidents
 
 ### Insurer reports
 
@@ -132,12 +135,16 @@ Mobile App ──POST /v1/trips/{id}/chunks──> Backend
 
 ### Admin
 
-- `POST /v1/trips/{trip_id}/reprocess` → re-run pipeline for a failed trip
+- `POST /v1/trips/{trip_id}/reprocess` -> re-run pipeline for a trip (insurer key)
 - `DELETE /v1/me` → delete all driver data (PDPO right to erasure)
 
 ## Model plugin
 
-The model team implements `app/model.py`:
+The model team contract is `TripFeatures` in `app/features.py` (feature names, units) plus
+`FEATURE_ORDER` in `app/model.py` (order of the model input vector). The pipeline validates
+the computed features against `TripFeatures` before storing them.
+
+`app/model.py` exposes:
 
 ```python
 def predict(features: dict) -> dict:
@@ -167,10 +174,12 @@ If loading fails or the model returns invalid values, the API fails loudly.
 
 - Orientation-free car frame: gravity removed with a 10 s rolling median; forward accel from GPS speed change, lateral accel from gyro yaw rate x GPS speed
 - GPS speed is used for event detection when available
-- Night driving = 23:00-05:00 local time
+- Night driving = 23:00-05:59 Asia/Hong_Kong
 - Speeding threshold = 50 km/h (fixed HK urban default; one event per run > 10 s)
-- Events are detected with fixed thresholds in `app/pipeline.py`
-- PostgreSQL (sync SQLAlchemy + psycopg 3) everywhere; schema is managed by Alembic
+- Events are detected with fixed thresholds in `app/pipeline/events.py`
+- PostgreSQL (sync SQLAlchemy + psycopg 3) everywhere; schema is managed by Alembic (0001 baseline, 0002 timestamptz, 0003 column comments, 0004 FK indexes)
+- Timestamps are timezone-aware UTC (`timestamptz`, DB sessions pinned to UTC); API datetimes end in `Z`
+- Detailed data model (ER diagram, allowed values): [`../docs/data-model.md`](../docs/data-model.md)
 
 ## Testing
 
@@ -194,27 +203,32 @@ backend/
 │   ├── main.py           # FastAPI app entry
 │   ├── config.py         # Environment config
 │   ├── database.py       # SQLAlchemy setup
-│   ├── models.py         # Database models
-│   ├── schemas.py        # Pydantic schemas
+│   ├── models.py         # Database models (typed Mapped, column comments)
+│   ├── values.py         # Allowed values (Literal types)
+│   ├── schemas.py        # API contract: Pydantic schemas with field docs
+│   ├── features.py       # TripFeatures: contract with the model team
 │   ├── auth.py           # API key auth
 │   ├── model.py          # Model plugin interface
-│   ├── pipeline.py       # Processing pipeline
+│   ├── pipeline/         # Processing pipeline package (process.py has process_trip)
+│   ├── services/         # Scoring helpers shared by the report routers
+│   ├── classify.py       # Trip classification (transit / driver / unknown)
 │   └── routers/
 │       ├── ingestion.py  # Trip upload endpoints
-│       ├── reports.py    # Driver and insurer reports
+│       ├── driver.py     # /me reports and labelling
+│       ├── insurer.py    # /insurer reports
+│       ├── incidents.py  # /me/incidents
 │       └── admin.py      # Reprocess and delete
 ├── migrations/           # Alembic env + versions
-├── docker/               # DB init script (creates drivescore_test)
+├── Dockerfile            # API image
+├── docker/               # DB init script (creates drivescore_test), API entrypoint
 ├── alembic.ini
 ├── scripts/
 │   ├── simulate.py       # Generate synthetic trips
 │   ├── seed.py           # Seed demo drivers
 │   └── export_openapi.py # Export OpenAPI JSON
-├── tests/
-│   ├── test_api.py
-│   ├── test_model.py
-│   └── test_pipeline.py
+├── tests/                # pytest suite (api, pipeline, classify, crash, model, migrations, config)
 ├── data/
+│   ├── transit_lines.geojson  # HK transit lines used by classification
 │   └── raw/              # Raw sensor chunks (gitignored)
 ├── contract/
 │   └── openapi.json      # Exported API contract

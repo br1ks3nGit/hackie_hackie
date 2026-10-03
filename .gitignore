@@ -7,6 +7,10 @@ dist/
 build/
 .pytest_cache/
 
+# AI
+CLAUDE.md
+.claude
+
 # Database
 *.db
 

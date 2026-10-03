@@ -217,7 +217,7 @@ No extra index on `trip_chunks.trip_id` (leading column of `uq_trip_chunk`) or o
 | trips.status | uploading, processing, done, failed | Trip lifecycle, see below. |
 | trips.trip_type | driver, passenger, transit, unknown | classify.py sets transit/driver/unknown; user label sets driver/passenger. Only driver (and user-labelled unknown) trips are scored. Unknown trips unlabelled for 7 days stop counting. |
 | trips.label_source | bluetooth, rules, user (or null) | bluetooth: car Bluetooth connected; rules: classifier rules (transit); user: manual label, never overwritten. Null for unknown. Reports show null as "unlabelled". |
-| events.type | harsh_brake, harsh_accel, sharp_corner, speeding | pipeline._detect_events. |
+| events.type | harsh_brake, harsh_accel, sharp_corner, speeding | app/pipeline/events.py `_detect_events`. |
 | trip_scores.tier | A, B, C, D, E | model.score_to_tier: A >= 90, B >= 75, C >= 60, D >= 40, E below 40. |
 | incidents.type | crash | pipeline crash detection and POST /v1/me/incidents (free string, default crash). |
 | incidents.confirmed | ok, help_needed, no_response (or null) | POST /v1/me/incidents/{id}/confirm. |
