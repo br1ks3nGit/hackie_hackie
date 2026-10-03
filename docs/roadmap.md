@@ -65,9 +65,9 @@ Open (the director escalates these when the increment needs them):
 ## Phase M - Mobile BT redesign
 - [x] M1 Drop NativeWind; restyle the existing screen with a `StyleSheet` BT theme
       (`mobile/src/theme.ts`, `mobile/src/ui.tsx`).
-- [ ] M2 i18n (en, zh-CN, zh-HK) + language picker + Noto fonts.
-- [ ] M3 Tab bar + Home / Trips / Trip detail on real data (no places); multiplier shown as a saving.
-- [ ] M4 Onboarding with real consent + Coach tips.
+- [x] M2 i18n (en, zh-CN, zh-HK) + language picker + Noto fonts.
+- [x] M3 Tab bar + Home / Trips / Trip detail on real data (no places); multiplier shown as a saving.
+- [x] M4 Onboarding with real consent + Coach tips.
 - [ ] M5 `DELETE /v1/me` + Privacy screen.
 - [ ] M6 Daily reminders via expo-notifications.
 

@@ -84,14 +84,14 @@ export interface EventResponse {
 export interface TripDetailResponse {
   trip_id: string;
   started_at: string;
-  ended_at?: string;
+  ended_at: string | null;
   distance_km: number;
   duration_min: number;
-  score?: number;
-  confidence?: number;
-  tier?: string;
+  score: number | null;
+  confidence: number | null;
+  tier: Tier | null;
   events: EventResponse[];
-  explanation?: string;
+  explanation: string | null;
 }
 
 async function request<T>(path: string, init?: RequestInit, apiKey?: string): Promise<T> {
