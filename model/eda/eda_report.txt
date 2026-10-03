@@ -1,0 +1,80 @@
+== 0. Sanity ==
+VED windows: 17758 (label1 share 0.500), cars 55
+DAF windows: 5868 (label1 share 0.500), cars 5
+
+== 1. Feature quality (VED train+stop+cal+test) ==
+NaNs: 0 total | Infs: 0 | constant features: ['mag_zcr', 'mag_dom_freq']
+near-constant: ['mag_min']
+
+== 2. Vertical axis & gravity (baseline windows only) ==
+az_mean       VED mean +0.0000 std 0.0004   |   DAF mean -0.0000 std 0.0010
+az_std        VED mean +0.0156 std 0.0011   |   DAF mean +0.0468 std 0.0338
+az_max        VED mean +0.0442 std 0.0065   |   DAF mean +0.1554 std 0.1334
+mag_mean      VED mean +0.1221 std 0.0952   |   DAF mean +0.0657 std 0.0417
+mag_std       VED mean +0.1272 std 0.1073   |   DAF mean +0.0390 std 0.0307
+ax_std        VED mean +0.0539 std 0.0530   |   DAF mean +0.0398 std 0.0247
+ay_std        VED mean +0.1513 std 0.1508   |   DAF mean +0.0431 std 0.0337
+
+== 3. Source shift: |Cohen's d| VED vs DAF, baseline windows ==
+Top 15 source-shifted features:
+az_spec_centroid       1.74
+az_zcr                 1.62
+az_spec_entropy        1.61
+mag_spec_entropy       1.56
+mag_min                1.41
+az_low_energy_ratio    1.38
+az_rms                 1.30
+az_std                 1.30
+az_p10                 1.29
+az_p90                 1.28
+az_p75                 1.27
+az_mad                 1.27
+mag_low_energy_ratio   1.27
+az_p25                 1.25
+mag_jerk_max           1.24
+features with |d| > 0.8 (large shift): 46 / 106
+
+== 4. Label signal: |Cohen's d| event vs baseline, within source ==
+Top 15 by VED signal:
+                      ved_signal  daf_signal  source_shift
+ax_spec_entropy             1.37        1.50          0.75
+ax_low_energy_ratio         1.27        1.52          0.92
+mag_spec_centroid           1.20        1.64          0.56
+ay_spec_entropy             1.12        1.67          0.96
+ax_spec_centroid            1.03        1.19          0.57
+ay_low_energy_ratio         0.99        1.62          1.06
+ax_zcr                      0.88        1.03          0.36
+ay_spec_centroid            0.86        1.17          0.84
+mag_low_energy_ratio        0.84        1.50          1.27
+ax_mad                      0.73        1.00          0.03
+mag_p10                     0.71        0.57          0.44
+ay_zcr                      0.71        1.00          0.76
+ax_p25                      0.70        0.98          0.04
+ax_p10                      0.70        1.20          0.25
+ax_p90                      0.69        1.18          0.26
+
+corr(ved_signal, daf_signal) across features: 0.803
+
+== 5. Candidate 'safe' features ==
+signal>0.3 in both sources AND shift<0.5: 16 features
+             ved_signal  daf_signal  source_shift
+ax_zcr             0.88        1.03          0.36
+ax_mad             0.73        1.00          0.03
+mag_p10            0.71        0.57          0.44
+ax_p25             0.70        0.98          0.04
+ax_p10             0.70        1.20          0.25
+ax_p90             0.69        1.18          0.26
+ax_p75             0.69        0.98          0.05
+ax_rms             0.65        1.22          0.34
+ax_std             0.65        1.22          0.34
+mag_p25            0.63        0.67          0.05
+mag_p50            0.54        0.88          0.42
+ay_dom_freq        0.36        0.49          0.42
+ax_range           0.36        0.94          0.46
+ax_max             0.35        0.90          0.43
+ax_min             0.34        0.89          0.45
+ax_dom_freq        0.30        0.52          0.39
+
+== 6. Redundancy (VED, abs Pearson > 0.95) ==
+pairs with |r|>0.95: 65 (of 5565)
+features involved in >=1 such pair: 44
