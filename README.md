@@ -20,7 +20,7 @@ premiums follow how a person actually drives rather than who they are.
 
 **Pitch.** A driver installs the app and consents once. From then on the phone records
 accelerometer, gyroscope and GPS during trips and uploads them in small chunks. The backend
-removes noise, works out whether the person was driving (and not riding the MTR or a bus),
+removes noise, works out whether the person was driving (or a passenger),
 detects harsh braking, harsh acceleration, sharp cornering, speeding and possible crashes,
 and turns each trip into features for a risk model. Trip scores roll up into a
 distance-weighted 90-day driver score, which maps to a tier (A to E) and a premium
@@ -59,7 +59,7 @@ to end against synthetic and real sensor data. The whole stack (API + PostgreSQL
  |  5. detect events: harsh_brake / harsh_accel / sharp_corner /     |
  |     speeding                                                      |
  |  6. detect crash -> Incident row (needs driver confirmation)      |
- |  7. build features (FEATURE_ORDER vector + route)                 |
+ |  7. build features (FEATURE_ORDER vector)                         |
  +-------------------------------+-----------------------------------+
                                  v
                   app/model.py predict(features)
@@ -281,15 +281,12 @@ pages use `app/services/insurer.py`, the same code as `GET /v1/insurer/drivers[/
 `/dashboard/trips/{trip_id}`.
 
 **Trip detail** (`/dashboard/trips/{trip_id}`): header (driver link, Hong Kong times, status, type, distance,
-duration), score, tier and confidence, the explanation text, a Leaflet map of the route with event markers
-(Br, Ac, Co, Sp) and crash markers (square "!") with an HTML legend, the events table (the accessible
-alternative to the map) and any crash incidents. Trips without a route show "No route recorded". Unknown ids
-show a dashboard-styled 404. Leaflet 1.9.4 is vendored and loaded on this page only; map tiles come from
-the OpenStreetMap tile server (the browser needs internet access, attribution is shown on the map).
+duration), score, tier and confidence, the explanation text, the events table (time, type, peak g) and any
+crash incidents (time, peak g, confirmation). There is no map and no location anywhere. Unknown ids show a
+dashboard-styled 404.
 
 **Incidents** (`/dashboard/incidents`): crash incidents newest first (20 per page) with Hong Kong time, driver
-and trip links, peak g, location (4 decimals; "View on map" links to the trip page, otherwise an
-OpenStreetMap link) and a confirmation pill (Help needed, No response, OK, Unconfirmed; help-needed rows are
+and trip links, peak g and a confirmation pill (Help needed, No response, OK, Unconfirmed; help-needed rows are
 highlighted). Query params: `status` (`help_needed`, `no_response`, `ok`, `unconfirmed`, default all) and
 `page`; unknown values fall back to the defaults. Filter and page changes swap the partial
 `/dashboard/partials/incidents` via HTMX with `HX-Push-Url`, and the page works without JavaScript. Uses
@@ -345,8 +342,7 @@ Turn on the "I'm driving" switch before you drive. While it is on, every uploade
 `car_connected: true`; while it is off, every chunk carries `car_connected: false`. The choice is
 kept in AsyncStorage (`drivescore:driving_mode`) and is read at each chunk, so flipping it
 mid-trip changes the share of "on" chunks from the next chunk. The backend needs more than 80%
-"on" chunks to classify the trip as `driver`; otherwise it is typically `unknown` (transit
-rules still apply) and goes to labelling.
+"on" chunks to classify the trip as `driver`; otherwise it is typically `unknown` and goes to labelling.
 
 #### Styling (NativeWind)
 
@@ -468,7 +464,7 @@ A failed check sets the trip to `failed` with a readable `failure_reason`.
 | GPS points | at least 10 |
 | Largest GPS gap | at most `TRIP_MAX_GPS_GAP_S` (30 s) |
 | Duration (IMU span) | at least `TRIP_MIN_DURATION_S` (60 s) |
-| Distance (haversine over GPS) | at least `TRIP_MIN_DISTANCE_KM` (1.0 km) |
+| Distance (integrated GPS speed) | at least `TRIP_MIN_DISTANCE_KM` (1.0 km) |
 
 ### 7.3 Signal processing
 
@@ -485,7 +481,7 @@ A failed check sets the trip to `failed` with a readable `failure_reason`.
 
 ### 7.4 Events
 
-Each event stores type, time, peak value in g (where relevant) and the nearest GPS position.
+Each event stores type, time and peak value in g (where relevant). No position is stored.
 For the g-based events, one event is emitted per contiguous run above the threshold, at its
 peak.
 
@@ -525,8 +521,8 @@ Evaluated in this order; the first match wins. Thresholds are in `CONFIG`.
 (a stable, probably mounted phone), capped at 1.0. It is informational; it does not decide
 scoring.
 
-Transit is no longer assigned automatically (it needed GPS coordinates, which the backend no
-longer uses or stores); `transit` stays valid for legacy rows and user labels.
+Transit is never assigned automatically; the user confirms a transit trip. `transit` is a valid
+label (`transit_line` is a legacy column, always NULL).
 
 Users can override any label with `POST /v1/me/trips/{id}/label` (`driver` or `passenger`).
 User labels are never overwritten by reprocessing. Labelling an unscored finished trip as
@@ -539,7 +535,7 @@ Stored per trip in `trip_features.features` (JSON). The model sees only the ten 
 
 | # | Feature | Definition |
 |---|---|---|
-| 1 | `distance_km` | Sum of haversine distances between GPS points |
+| 1 | `distance_km` | Integral of GPS speed over time (no coordinates) |
 | 2 | `duration_min` | IMU time span in minutes |
 | 3 | `night_driving_share` | Share of IMU samples with Hong Kong hour 23 to 05 (23:00 to 05:59) |
 | 4 | `harsh_brake_per_100km` | Event count / max(distance, 0.1 km) x 100 |
@@ -550,8 +546,7 @@ Stored per trip in `trip_features.features` (JSON). The model sees only the ten 
 | 9 | `max_speed_ms` | Max GPS speed |
 | 10 | `speeding_time_share` | Share of GPS points above 13.9 m/s |
 
-The stored JSON also holds `events_per_100km` (dict) and a downsampled `route` (up to about
-100 points), which are used by the API but are not model inputs. The pipeline validates the
+The stored JSON also holds `events_per_100km` (dict), which is used by the API but is not a model input. The pipeline validates the
 computed features against the `TripFeatures` model in `app/features.py` before storing them.
 
 ## 8. Scoring
@@ -643,10 +638,10 @@ Where things live:
 | `consents` | `id`, `driver_id`, `version`, `granted_at` | FK to `drivers`; required before `trips/start` |
 | `trips` | `id`, `driver_id`, `status`, `started_at`, `ended_at`, `failure_reason`, `trip_type`, `label_source`, `driver_likelihood`, `transit_line`, `bluetooth_connected_ratio`, `created_at` | FK to `drivers`; `trip_type`: driver / passenger / transit / unknown; `label_source`: bluetooth / rules / user |
 | `trip_chunks` | `id`, `trip_id`, `seq`, `file_path`, `received_at` | FK to `trips`; unique `(trip_id, seq)` gives idempotent uploads |
-| `events` | `id`, `trip_id`, `type`, `time`, `peak_g`, `lat`, `lon` | FK to `trips`; harsh_brake, harsh_accel, sharp_corner, speeding |
-| `trip_features` | `id`, `trip_id` (unique), `features` (JSON) | One row per trip; model input and route |
+| `events` | `id`, `trip_id`, `type`, `time`, `peak_g`, `lat`, `lon` (deprecated, always NULL, dropped in migration 0005) | FK to `trips`; harsh_brake, harsh_accel, sharp_corner, speeding |
+| `trip_features` | `id`, `trip_id` (unique), `features` (JSON) | One row per trip; model input |
 | `trip_scores` | `id`, `trip_id` (unique), `confidence`, `score`, `tier`, `model_version`, `created_at` | One row per scored trip |
-| `incidents` | `id`, `driver_id`, `trip_id` (nullable), `type`, `time`, `lat`, `lon`, `peak_g`, `confirmed`, `sensor_snapshot` (JSON), `created_at` | FK to `drivers` and `trips`; `confirmed`: ok / help_needed / no_response |
+| `incidents` | `id`, `driver_id`, `trip_id` (nullable), `type`, `time`, `lat`, `lon` (deprecated, always NULL, dropped in migration 0005), `peak_g`, `confirmed`, `sensor_snapshot` (JSON), `created_at` | FK to `drivers` and `trips`; `confirmed`: ok / help_needed / no_response |
 
 Raw sensor data is not in the database; it lives as gzip JSON files on disk
 (`DATA_DIR/<trip_id>/<seq>.json.gz`), referenced by `trip_chunks.file_path`.
@@ -674,6 +669,11 @@ forgotten revision.
 
 Designed with Hong Kong's Personal Data (Privacy) Ordinance in mind. This is a design
 intent for the POC, not legal advice.
+
+- **No coordinates, ever.** Coordinates never leave the phone: GPS is used on-device for
+  speed only. The server stores no locations. Requests carrying `lat`, `lon`, `lng` or any
+  unknown field are rejected with 422. There are no route maps and no event locations in
+  the API or the dashboard. Transit trips are confirmed by the user, not matched to a line.
 
 - **Consent first.** `POST /v1/trips/start` returns 403 until the driver has recorded
   consent (`POST /v1/consent`, versioned).
@@ -761,17 +761,15 @@ This is a hackathon POC. Be aware of the following.
   z axis is roughly vertical (phone lying flat or mounted upright in a typical pose). Other
   orientations will under- or over-report cornering. Gravity removal and the forward
   acceleration (from GPS speed) do not depend on orientation.
-- Speeding uses a fixed 50 km/h, not the real road limit (TODO: OSM limits).
+- Speeding uses a fixed 50 km/h, not the real road limit.
 - Thresholds are hand-picked, not calibrated on real HK data.
 - Crash detection uses fixed rules and always needs driver confirmation; there is no
   emergency notification flow yet.
-- Transit detection uses 9 hand-drawn lines. Bus, minibus and taxi rides are not detected
-  and fall to `unknown`.
+- Transit is not detected automatically (no coordinates on the server); the user labels such trips.
 
 **Mobile**
 - `car_connected` comes from a manual "I'm driving" toggle (E2), not from the car's Bluetooth
-  or audio. If the user forgets to turn it on, the trip is typically `unknown` (transit rules still
-  apply) and does not count toward the score. Native car-audio detection is planned (H2).
+  or audio. If the user forgets to turn it on, the trip is typically `unknown` and does not count toward the score. Native car-audio detection is planned (H2).
 - The app has no screens for incidents or data deletion, although the
   API supports them.
 - Registration and consent happen automatically on first launch; there is no consent screen.
@@ -802,7 +800,7 @@ Full plan and status in [docs/roadmap.md](docs/roadmap.md). One line is one smal
 - Next (phase A): A11 cleanups.
 - Mobile (phase E): send `car_connected`, trip labelling (done, E3),
   NativeWind.
-- Insurer dashboard (phase F): staff login, overview, drivers list and detail, trip map,
+- Insurer dashboard (phase F): staff login, overview, drivers list and detail, trip detail,
   incidents (Jinja2 + HTMX + Alpine.js + UnoCSS, served by the API).
 - Docs (phase G): regenerate handoff and contracts from the OpenAPI export.
 

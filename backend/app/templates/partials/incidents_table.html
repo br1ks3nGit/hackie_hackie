@@ -10,7 +10,6 @@
           <th scope="col" class="px-4 py-3">Driver</th>
           <th scope="col" class="px-4 py-3">Trip</th>
           <th scope="col" class="px-4 py-3 text-right">Peak g</th>
-          <th scope="col" class="px-4 py-3">Location</th>
           <th scope="col" class="px-4 py-3">Confirmation</th>
         </tr>
       </thead>
@@ -21,18 +20,11 @@
           <td class="px-4 py-3 border-t border-border"><a href="/dashboard/drivers/{{ i.driver_id }}" class="font-mono text-primary underline kbd-focus rounded-sm">{{ i.driver_id }}</a></td>
           <td class="px-4 py-3 border-t border-border">{% if i.trip_id %}<a href="/dashboard/trips/{{ i.trip_id }}" class="font-mono text-primary underline kbd-focus rounded-sm">{{ i.trip_id }}</a>{% else %}-{% endif %}</td>
           <td class="px-4 py-3 border-t border-border text-right font-mono tabular-nums">{% if i.peak_g is none %}-{% else %}{{ "%.2f"|format(i.peak_g) }} g{% endif %}</td>
-          <td class="px-4 py-3 border-t border-border">
-            {% if i.lat is none or i.lon is none %}-{% else %}
-            <span class="font-mono tabular-nums">{{ "%.4f"|format(i.lat) }}, {{ "%.4f"|format(i.lon) }}</span>
-            {% if i.trip_id %}<a href="/dashboard/trips/{{ i.trip_id }}" class="ml-2 text-primary underline kbd-focus rounded-sm">View on map<span class="sr-only"> for incident at {{ i.time|hk_time }}</span></a>
-            {% else %}<a href="https://www.openstreetmap.org/?mlat={{ '%.6f'|format(i.lat) }}&amp;mlon={{ '%.6f'|format(i.lon) }}#map=16/{{ '%.6f'|format(i.lat) }}/{{ '%.6f'|format(i.lon) }}" target="_blank" rel="noopener noreferrer" class="ml-2 text-primary underline kbd-focus rounded-sm">Open in OpenStreetMap<span class="sr-only"> (opens in a new tab)</span></a>{% endif %}
-            {% endif %}
-          </td>
           <td class="px-4 py-3 border-t border-border">{{ incident_pill(i.confirmed) }}</td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="px-4 py-12 text-center border-t border-border">
+          <td colspan="5" class="px-4 py-12 text-center border-t border-border">
             {% if status %}
             <p class="text-lg font-semibold text-text">No incidents match this filter</p>
             <p class="text-sm text-text-muted">No incidents are marked "{{ status_label }}".</p>

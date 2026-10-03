@@ -1,3 +1,5 @@
+> **DEPRECATED - reference only.** This document describes the original design and is kept for the team's reference. The current contract is `backend/contract/openapi.json` and the live docs at `/docs`. The API no longer accepts or returns coordinates.
+
 # DriveScore API Contract
 
 ## Base URL

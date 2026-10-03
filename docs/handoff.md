@@ -1,3 +1,5 @@
+> **DEPRECATED - reference only.** This document describes the original design and is kept for the team's reference. The current contract is `backend/contract/openapi.json` and the live docs at `/docs`. The API no longer accepts or returns coordinates.
+
 # DriveScore Handoff Guide
 
 This project is split across three teammates. I own the **connection layer** only: the API, the model adapter interface, and the contracts that let each team plug in.

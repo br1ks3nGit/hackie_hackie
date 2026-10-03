@@ -42,10 +42,10 @@ def _seed(rows: list[dict[str, Any]]) -> None:
 def _five() -> None:
     _seed(
         [
-            {"confirmed": None, "lat": 22.30, "lon": 114.17, "peak_g": 4.0},
-            {"confirmed": "ok", "trip_id": "t-1", "lat": 22.31, "lon": 114.18, "peak_g": 3.5},
-            {"confirmed": "no_response", "lat": 22.32, "lon": 114.19, "peak_g": 5.25},
-            {"confirmed": "help_needed", "trip_id": "t-1", "lat": 22.33, "lon": 114.2},
+            {"confirmed": None, "peak_g": 4.0},
+            {"confirmed": "ok", "trip_id": "t-1", "peak_g": 3.5},
+            {"confirmed": "no_response", "peak_g": 5.25},
+            {"confirmed": "help_needed", "trip_id": "t-1"},
         ]
     )
 
@@ -63,7 +63,6 @@ def test_list_newest_first_with_all_statuses(client: TestClient) -> None:
     for text in ("Help needed", "No response", ">OK<", "Unconfirmed", "4 incidents"):
         assert text in html
     assert "20:03" in html  # 12:03 UTC shown as HKT
-    assert "22.3300, 114.2000" in html
     assert "5.25 g" in html
     assert 'aria-current="page"' in html and "bg-danger-soft" in html
 
@@ -74,10 +73,10 @@ def test_links(client: TestClient) -> None:
     html = client.get("/dashboard/incidents").text
     assert 'href="/dashboard/drivers/drv-1"' in html
     assert 'href="/dashboard/trips/t-1"' in html
-    assert html.count("View on map") == 2
-    assert html.count("Open in OpenStreetMap") == 2
-    assert "https://www.openstreetmap.org/?mlat=22.300000&amp;mlon=114.170000#map=16/22.3" in html
-    assert 'rel="noopener noreferrer"' in html
+    low = html.lower()
+    for text in ("view on map", "openstreetmap", "leaflet", "location", "latitude", "longitude"):
+        assert text not in low
+    assert not re.search(r"\d{2}\.\d{4}, ?\d{2,3}\.\d{4}", html)
 
 
 @pytest.mark.parametrize(
