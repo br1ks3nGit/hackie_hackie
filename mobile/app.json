@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "DriveScore",
+    "slug": "drivescore",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drivescore.app",
+      "infoPlist": {
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "DriveScore tracks your location in the background to measure driving trips and calculate your risk score.",
+        "NSLocationWhenInUseUsageDescription": "DriveScore uses your location to record trip routes and speed.",
+        "NSMotionUsageDescription": "DriveScore uses motion sensors to detect driving events like hard braking and sharp turns.",
+        "UIBackgroundModes": ["location", "fetch"]
+      }
+    },
+    "android": {
+      "package": "com.drivescore.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "HIGH_SAMPLING_RATE_SENSORS"
+      ]
+    }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DriveScore API Schemas",
+  "definitions": {
+    "AccelerometerSample": {
+      "type": "object",
+      "properties": {
+        "t": { "type": "number", "description": "Unix timestamp in seconds" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      },
+      "required": ["t", "x", "y", "z"]
+    },
+    "GyroscopeSample": {
+      "type": "object",
+      "properties": {
+        "t": { "type": "number" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      },
+      "required": ["t", "x", "y", "z"]
+    },
+    "GPSPoint": {
+      "type": "object",
+      "properties": {
+        "t": { "type": "number" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "speed": { "type": "number", "description": "Speed in m/s" },
+        "accuracy": { "type": "number" }
+      },
+      "required": ["t", "lat", "lng"]
+    },
+    "TripUpload": {
+      "type": "object",
+      "properties": {
+        "trip_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "device_id": { "type": "string" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "ended_at": { "type": "string", "format": "date-time" },
+        "accelerometer": { "type": "array", "items": { "$ref": "#/definitions/AccelerometerSample" } },
+        "gyroscope": { "type": "array", "items": { "$ref": "#/definitions/GyroscopeSample" } },
+        "gps": { "type": "array", "items": { "$ref": "#/definitions/GPSPoint" } },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "distance_m": { "type": "number" },
+            "duration_s": { "type": "number" },
+            "phone_model": { "type": "string" },
+            "app_version": { "type": "string" }
+          }
+        }
+      },
+      "required": ["trip_id", "user_id", "started_at", "ended_at"]
+    },
+    "TripScore": {
+      "type": "object",
+      "properties": {
+        "trip_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["scored", "needs_review", "rejected"] },
+        "is_outlier": { "type": "boolean" },
+        "risk_score": { "type": "number" },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["hard_brake", "hard_accel", "sharp_turn", "crash"] },
+              "t": { "type": "number" },
+              "severity": { "type": "number" },
+              "lat": { "type": "number" },
+              "lng": { "type": "number" }
+            }
+          }
+        },
+        "factors": {
+          "type": "object",
+          "properties": {
+            "hard_brakes": { "type": "number" },
+            "hard_accels": { "type": "number" },
+            "sharp_turns": { "type": "number" },
+            "max_speed": { "type": "number" },
+            "night_ratio": { "type": "number" }
+          }
+        }
+      }
+    },
+    "DriverSummary": {
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "overall_score": { "type": "number" },
+        "total_trips": { "type": "number" },
+        "total_distance_m": { "type": "number" },
+        "recent_trips": { "type": "array", "items": { "$ref": "#/definitions/TripScore" } }
+      }
+    }
+  }
+}

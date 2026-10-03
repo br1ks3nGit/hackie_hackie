@@ -1,0 +1,12 @@
+{
+  "total_drivers": 30,
+  "total_trips_90d": 156,
+  "tier_distribution": {
+    "A": 5,
+    "B": 12,
+    "C": 8,
+    "D": 4,
+    "E": 1
+  },
+  "average_multiplier": 0.95
+}

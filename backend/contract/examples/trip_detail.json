@@ -1,0 +1,24 @@
+{
+  "trip_id": "trp-x1y2z3a4b5c6",
+  "started_at": "2026-10-03T08:00:00Z",
+  "ended_at": "2026-10-03T08:15:00Z",
+  "distance_km": 8.5,
+  "duration_min": 15.0,
+  "score": 72,
+  "confidence": 0.28,
+  "tier": "B",
+  "events": [
+    {
+      "type": "harsh_brake",
+      "time": "2026-10-03T08:05:23Z",
+      "peak_g": 0.52,
+      "lat": 22.3193,
+      "lon": 114.1694
+    }
+  ],
+  "route": [
+    { "lat": 22.3193, "lon": 114.1694, "speed": 10.0 },
+    { "lat": 22.3200, "lon": 114.1700, "speed": 15.0 }
+  ],
+  "explanation": "This trip included 1 harsh brake."
+}
