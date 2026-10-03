@@ -1,6 +1,6 @@
 import { defineConfig, presetWind } from "unocss";
 
-// Token names mirror docs/design-system.md section 6 (and mobile/tailwind.config.js).
+// Token names mirror docs/design-system.md section 6.
 const colors = {
   primary: { DEFAULT: "#0062CC", hover: "#0052A8", active: "#00428A", fg: "#FFFFFF" },
   surface: { DEFAULT: "#FFFFFF", muted: "#F3F4F6" },

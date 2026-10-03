@@ -14,7 +14,8 @@ Made:
   login/logout, no separate device model.
 - Insurer dashboard: Jinja2 + HTMX + Alpine.js + UnoCSS (`presetWind`), served by the FastAPI app,
   behind a basic staff login (credentials from env).
-- Mobile styling: NativeWind, sharing token names with the dashboard's UnoCSS config.
+- Mobile styling: plain React Native `StyleSheet` theme in `mobile/src/theme.ts` (BT brand,
+  docs/design-system.md section 8). NativeWind dropped in M1.
 
 Open (the director escalates these when the increment needs them):
 - D4 Dashboard charts (needed by F2): decided Chart.js (simple; uPlot only if long time series appear).
@@ -59,7 +60,16 @@ Open (the director escalates these when the increment needs them):
 - [x] E2 Send `car_connected` with chunks so real trips score automatically: manual "I'm driving"
       toggle for now; automatic car-audio detection is H2.
 - [x] E3 Label unknown trips (driver / passenger).
-- [x] E4 NativeWind setup and design tokens.
+- [x] E4 NativeWind setup and design tokens. (Superseded by M1.)
+
+## Phase M - Mobile BT redesign
+- [x] M1 Drop NativeWind; restyle the existing screen with a `StyleSheet` BT theme
+      (`mobile/src/theme.ts`, `mobile/src/ui.tsx`).
+- [ ] M2 i18n (en, zh-CN, zh-HK) + language picker + Noto fonts.
+- [ ] M3 Tab bar + Home / Trips / Trip detail on real data (no places); multiplier shown as a saving.
+- [ ] M4 Onboarding with real consent + Coach tips.
+- [ ] M5 `DELETE /v1/me` + Privacy screen.
+- [ ] M6 Daily reminders via expo-notifications.
 
 ## Phase F - Insurer dashboard
 - [x] F1 Basic staff login (env credentials, hashed password), cookie session, CSRF, base layout,

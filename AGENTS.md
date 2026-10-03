@@ -20,7 +20,7 @@ Roadmap and open decisions: docs/roadmap.md - read it before planning any task.
 Python 3.12, FastAPI, Pydantic v2, sync only (plain `def` handlers, no async DB). PostgreSQL via
 SQLAlchemy 2.x sync sessions; schema changes only through Alembic revisions; tests run against real
 Postgres. Processing with numpy/pandas/scipy runs as FastAPI BackgroundTasks. Dashboard: Jinja2 +
-HTMX + Alpine.js + UnoCSS. Mobile: Expo SDK 51, React Native 0.74, TypeScript, NativeWind.
+HTMX + Alpine.js + UnoCSS. Mobile: Expo SDK 51, React Native 0.74, TypeScript, StyleSheet theme.
 
 ## Tooling (from backend/)
 - Install: `uv sync`
