@@ -256,7 +256,7 @@ def label_trip(
 
     return TripLabelResponse(
         trip_id=trip.id,
-        trip_type=trip.trip_type,
+        trip_type=request.trip_type,
         status=status,
     )
 

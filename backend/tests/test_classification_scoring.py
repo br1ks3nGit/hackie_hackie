@@ -126,6 +126,7 @@ def test_label_trip_as_driver_adds_to_score():
     # Force the status to "done" so the trip counts as finished without a score
     db = SessionLocal()
     trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    assert trip is not None
     trip.status = "done"
     db.commit()
     db.close()
