@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearReminder } from './reminders';
 import { useLanguage } from './i18n';
 import { API_BASE_URL } from './config';
 import { registerDriver, giveConsent } from './api/client';
@@ -113,6 +114,7 @@ export function useSession(): Session {
   const signOutAfterDelete = useCallback(async () => {
     storedKey.current = null;
     try {
+      await clearReminder();
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.DRIVER_ID,
         STORAGE_KEYS.API_KEY,

@@ -70,7 +70,7 @@ Open (the director escalates these when the increment needs them):
 - [x] M4 Onboarding with real consent + Coach tips.
 - [x] M5a `DELETE /v1/me` (backend, see P-phase entry M5a).
 - [x] M5b Privacy screen: data card, delete-all with inline confirm; delete is blocked while recording.
-- [ ] M6 Daily reminders via expo-notifications.
+- [x] M6 Daily reminders via expo-notifications.
 
 ## Phase F - Insurer dashboard
 - [x] F1 Basic staff login (env credentials, hashed password), cookie session, CSRF, base layout,

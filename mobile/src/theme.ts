@@ -35,6 +35,7 @@ export const theme = {
   space: { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 },
   minTouch: 44,
   minSwitchRow: 48,
+  disabledOpacity: 0.5,
   fontFamily: { body: undefined as string | undefined, display: undefined as string | undefined },
   type: {
     eyebrow: { fontSize: 13, lineHeight: 18, fontWeight: '500' as const },

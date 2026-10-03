@@ -123,7 +123,7 @@ export function StepDots({ count, index }: { count: number; index: number }) {
 
 const styles = StyleSheet.create({
   checkRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.md },
-  checkDisabled: { opacity: 0.5 },
+  checkDisabled: { opacity: theme.disabledOpacity },
   box: { width: BOX, height: BOX, borderRadius: radii.chip },
   boxOff: {
     borderTopWidth: 2,
