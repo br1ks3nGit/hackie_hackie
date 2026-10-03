@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true},{"code":"...","swap":true}]}'>
+  <title>{% block title %}DriveScore Insurer{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/uno.css">
+  <script src="/static/vendor/htmx-2.0.11.min.js" defer></script>
+  <script src="/static/vendor/alpine-3.17.4.min.js" defer></script>
+</head>
+<body class="min-h-full bg-surface-muted text-text font-sans" hx-headers='{{ {"X-CSRF-Token": csrf_token}|tojson }}'>
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-10 focus:bg-surface focus:text-primary focus:px-3 focus:py-2 focus:rounded-md kbd-focus">Skip to main content</a>
+  {% if user %}
+  {% from "components/button.html" import button %}
+  <header class="bg-nav text-nav-fg">
+    <nav aria-label="Main" class="mx-auto max-w-6xl px-4 sm:px-6 py-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <span class="order-1 text-white font-semibold">DriveScore</span>
+      <ul class="order-3 w-full sm:order-2 sm:w-auto flex flex-wrap items-center gap-1 list-none m-0 p-0">
+        <li><a href="/dashboard" class="nav-link{% if active == 'overview' %} text-white bg-white/15{% endif %}"{% if active == 'overview' %} aria-current="page"{% endif %}>Overview</a></li>
+        <li><a href="/dashboard/drivers" class="nav-link{% if active == 'drivers' %} text-white bg-white/15{% endif %}"{% if active == 'drivers' %} aria-current="page"{% endif %}>Drivers</a></li>
+        <li><a href="/dashboard/incidents" class="nav-link{% if active == 'incidents' %} text-white bg-white/15{% endif %}"{% if active == 'incidents' %} aria-current="page"{% endif %}>Incidents</a></li>
+      </ul>
+      <div class="order-2 sm:order-3 ml-auto flex items-center gap-3">
+        <span class="text-sm">{{ user }}</span>
+        <form method="post" action="/dashboard/logout">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          {{ button("Sign out", type="submit", variant="ghost", size="sm") }}
+        </form>
+      </div>
+    </nav>
+  </header>
+  {% endif %}
+  <main id="main" class="mx-auto max-w-6xl p-4 sm:p-6">
+    {% block content %}{% endblock %}
+  </main>
+  <div id="toast-region" aria-live="polite" class="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96"></div>
+</body>
+</html>

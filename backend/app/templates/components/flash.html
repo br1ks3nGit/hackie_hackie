@@ -1,0 +1,13 @@
+{% macro flash(kind, message, id=none) -%}
+{%- set variants = {
+  "error": "bg-danger-soft text-danger-ink border-danger",
+  "success": "bg-success-soft text-success-ink border-success",
+  "info": "bg-info-soft text-info-ink border-info",
+  "warning": "bg-warning-soft text-warning-ink border-warning",
+} -%}
+{%- set labels = {"error": "Error:", "success": "Success:", "info": "Note:", "warning": "Warning:"} -%}
+<div{% if id %} id="{{ id }}"{% endif %} class="flash {{ variants[kind] }}" role="{{ 'alert' if kind == 'error' else 'status' }}">
+  <strong>{{ labels[kind] }}</strong>
+  <span>{{ message }}</span>
+</div>
+{%- endmacro %}

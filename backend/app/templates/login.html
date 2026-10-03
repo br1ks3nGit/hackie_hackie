@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "components/button.html" import button %}
+{% from "components/field.html" import field %}
+{% from "components/flash.html" import flash %}
+{% block title %}Sign in - DriveScore Insurer{% endblock %}
+{% block content %}
+<div class="card max-w-sm mx-auto mt-16 flex flex-col gap-4">
+  <h1 class="text-2xl font-bold text-text">DriveScore Insurer</h1>
+  {% if error %}{{ flash("error", error, id="login-error") }}{% endif %}
+  <form method="post" action="/dashboard/login" class="flex flex-col gap-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {{ field("username", "Username", value=username, required=true, autocomplete="username", describedby="login-error" if error, invalid=error) }}
+    {{ field("password", "Password", type="password", required=true, autocomplete="current-password", describedby="login-error" if error, invalid=error) }}
+    {{ button("Sign in", type="submit", size="lg", full_width=true) }}
+  </form>
+</div>
+{% endblock %}

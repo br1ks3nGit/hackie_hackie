@@ -1,0 +1,10 @@
+{% macro button(label, type="button", variant="primary", size="md", full_width=false) -%}
+{%- set variants = {
+  "primary": "btn btn-primary",
+  "secondary": "btn btn-secondary",
+  "danger": "btn btn-danger",
+  "ghost": "btn btn-ghost",
+} -%}
+{%- set sizes = {"sm": "btn-sm", "md": "", "lg": "btn-lg"} -%}
+<button type="{{ type }}" class="{{ variants[variant] }} {{ sizes[size] }}{% if full_width %} w-full{% endif %}" hx-disabled-elt="this">{{ label }}</button>
+{%- endmacro %}

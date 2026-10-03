@@ -10,6 +10,7 @@ from sqlalchemy.engine import make_url
 # lru_cached, and conftest is imported by pytest before test modules.
 os.environ.setdefault("INSURER_API_KEY", "test-insurer-key")
 os.environ.setdefault("DRIVER_API_KEY_SALT", "test-salt")
+os.environ.setdefault("SESSION_SECRET", "test-session-secret-0123456789-abcdefghij")
 os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL",
     "postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore_test",
