@@ -1,0 +1,43 @@
+[project]
+name = "drivescore-backend"
+version = "0.1.0"
+description = "DriveScore usage-based car insurance backend"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi==0.115.0",
+    "uvicorn[standard]==0.31.0",
+    "pydantic==2.9.0",
+    "pydantic-settings==2.5.0",
+    "sqlalchemy==2.0.35",
+    "alembic==1.13.0",
+    "python-multipart==0.0.12",
+    "numpy==1.26.4",
+    "pandas==2.2.3",
+    "scipy==1.13.1",
+    "requests==2.32.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.4.2",
+    "pytest-asyncio==0.24.0",
+    "httpx==0.27.0",
+    "ruff",
+    "ty",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "DTZ", "RUF"]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
