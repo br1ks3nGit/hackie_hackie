@@ -554,7 +554,8 @@ Raw sensor data is not in the database; it lives as gzip JSON files on disk
 ### Schema changes (Alembic)
 
 Revisions so far: `0001_baseline` (all 8 tables), `0002_timestamptz` (timestamps become
-timezone-aware), `0003_column_comments` (column comments from `app/models.py`), `0004_fk_indexes`
+timezone-aware), `0003_column_comments` (column comments from
+`app/models.py`), `0004_fk_indexes` (indexes on foreign-key columns).
 
 Never edit an applied revision; add a new one.
 
