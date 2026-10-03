@@ -40,7 +40,7 @@ Open (the director escalates these when the increment needs them):
       `process_trip` under 100 lines, no behavior change.
 - [x] A8 Typed models: `Mapped[...]` / `mapped_column` so ty's `invalid-argument-type` and
       `invalid-assignment` rules go back to error.
-- [ ] A9 FK indexes: `index=True` on `trips.driver_id`, `events.trip_id`, `incidents.driver_id`,
+- [x] A9 FK indexes: `index=True` on `trips.driver_id`, `events.trip_id`, `incidents.driver_id`,
       `incidents.trip_id`, `consents.driver_id` + revision 0002 (keeps the drift test green).
 - [x] A10 Readable schema: `Literal` types for status/tier/type fields, `Field(description, examples)`
       on every API schema, typed models instead of bare dicts, a `TripFeatures` Pydantic model for

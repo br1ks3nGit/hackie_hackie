@@ -50,7 +50,9 @@ class Consent(Base):
     __tablename__ = "consents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    driver_id: Mapped[str] = mapped_column(String, ForeignKey("drivers.id"), nullable=False)
+    driver_id: Mapped[str] = mapped_column(
+        String, ForeignKey("drivers.id"), nullable=False, index=True
+    )
     version: Mapped[str] = mapped_column(String, nullable=False)
     granted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
@@ -63,7 +65,9 @@ class Trip(Base):
     __tablename__ = "trips"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    driver_id: Mapped[str] = mapped_column(String, ForeignKey("drivers.id"), nullable=False)
+    driver_id: Mapped[str] = mapped_column(
+        String, ForeignKey("drivers.id"), nullable=False, index=True
+    )
     status: Mapped[TripStatus] = mapped_column(
         String,
         nullable=False,
@@ -132,7 +136,7 @@ class Event(Base):
     __tablename__ = "events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    trip_id: Mapped[str] = mapped_column(String, ForeignKey("trips.id"), nullable=False)
+    trip_id: Mapped[str] = mapped_column(String, ForeignKey("trips.id"), nullable=False, index=True)
     type: Mapped[EventType] = mapped_column(
         String, nullable=False, comment="harsh_brake, harsh_accel, sharp_corner, speeding"
     )
@@ -203,8 +207,12 @@ class Incident(Base):
     __tablename__ = "incidents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    driver_id: Mapped[str] = mapped_column(String, ForeignKey("drivers.id"), nullable=False)
-    trip_id: Mapped[str | None] = mapped_column(String, ForeignKey("trips.id"), nullable=True)
+    driver_id: Mapped[str] = mapped_column(
+        String, ForeignKey("drivers.id"), nullable=False, index=True
+    )
+    trip_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("trips.id"), nullable=True, index=True
+    )
     type: Mapped[str] = mapped_column(String, nullable=False, comment="Incident kind; crash")
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
