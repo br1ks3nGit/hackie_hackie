@@ -67,8 +67,8 @@ def _load_all_chunks(trip_id: str) -> tuple[pd.DataFrame, pd.DataFrame, float | 
     gps_df = pd.DataFrame(gps_rows)
 
     # Convert epoch ms to datetime
-    imu_df["time"] = pd.to_datetime(imu_df["t"], unit="ms")
-    gps_df["time"] = pd.to_datetime(gps_df["t"], unit="ms")
+    imu_df["time"] = pd.to_datetime(imu_df["t"], unit="ms", utc=True)
+    gps_df["time"] = pd.to_datetime(gps_df["t"], unit="ms", utc=True)
 
     # Remove duplicates and sort
     imu_df = imu_df.drop_duplicates(subset=["t"]).sort_values("t").reset_index(drop=True)
@@ -139,7 +139,7 @@ def _resample_imu(imu_df: pd.DataFrame, target_hz: float = 50.0) -> pd.DataFrame
     for col in ["ax", "ay", "az", "gx", "gy", "gz"]:
         new_df[col] = np.interp(new_t, imu_df["t"], imu_df[col])
 
-    new_df["time"] = pd.to_datetime(new_df["t"], unit="ms")
+    new_df["time"] = pd.to_datetime(new_df["t"], unit="ms", utc=True)
     return new_df
 
 
@@ -366,9 +366,9 @@ def _calculate_features(
     duration_s = (imu_df["t"].max() - imu_df["t"].min()) / 1000.0
     duration_min = duration_s / 60.0
 
-    # Night driving share (23:00-05:00 Asia/Hong_Kong); imu time is UTC-naive
+    # Night driving share (23:00-05:00 Asia/Hong_Kong); imu time is tz-aware UTC
     night_hours = set(range(23, 24)) | set(range(0, 6))
-    hk_time = imu_df["time"].dt.tz_localize("UTC").dt.tz_convert("Asia/Hong_Kong")
+    hk_time = imu_df["time"].dt.tz_convert("Asia/Hong_Kong")
     night_samples = imu_df[hk_time.dt.hour.isin(night_hours)]
     night_share = len(night_samples) / len(imu_df) if len(imu_df) > 0 else 0
 

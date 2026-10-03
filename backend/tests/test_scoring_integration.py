@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -17,7 +17,7 @@ def _seed_driver_with_scored_trips():
     driver = Driver(id="drv-test-scoring", api_key_hash=hash_api_key(api_key))
     db.add(driver)
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     trip_a = Trip(
         id="trp-scoring-a",
         driver_id=driver.id,

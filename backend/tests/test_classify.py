@@ -18,7 +18,7 @@ def _make_gps_df(points, speeds=None):
     return pd.DataFrame(
         {
             "t": times,
-            "time": pd.to_datetime(times, unit="ms"),
+            "time": pd.to_datetime(times, unit="ms", utc=True),
             "lat": [p[0] for p in points],
             "lon": [p[1] for p in points],
             "speed": speeds,
@@ -33,7 +33,7 @@ def _make_imu_df(n=500, gyro_variance=0.001):
     return pd.DataFrame(
         {
             "t": times,
-            "time": pd.to_datetime(times, unit="ms"),
+            "time": pd.to_datetime(times, unit="ms", utc=True),
             "ax": np.random.normal(0, 0.05, len(times)),
             "ay": np.random.normal(0, 0.05, len(times)),
             "az": np.random.normal(9.8, 0.1, len(times)),

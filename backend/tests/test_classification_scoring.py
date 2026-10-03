@@ -1,5 +1,5 @@
 import unittest.mock
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
@@ -206,7 +206,7 @@ def test_create_and_confirm_incident():
         headers={"X-API-Key": api_key},
         json={
             "type": "crash",
-            "time": datetime.utcnow().isoformat(),
+            "time": datetime.now(UTC).isoformat(),
             "lat": 22.3193,
             "lon": 114.1694,
             "peak_g": 5.2,
@@ -222,6 +222,18 @@ def test_create_and_confirm_incident():
     )
     assert response.status_code == 200
     assert response.json()["confirmed"] == "ok"
+
+
+def test_incident_naive_time_treated_as_utc():
+    _driver_id, api_key = _register_and_consent()
+
+    response = client.post(
+        "/v1/me/incidents",
+        headers={"X-API-Key": api_key},
+        json={"type": "crash", "time": "2026-01-01T00:00:00"},
+    )
+    assert response.status_code == 200
+    assert datetime.fromisoformat(response.json()["time"]) == datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def test_insurer_detail_includes_passenger_share():

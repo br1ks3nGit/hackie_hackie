@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd
@@ -55,7 +55,7 @@ def test_detect_harsh_brake():
     imu_df = pd.DataFrame(
         {
             "t": times,
-            "time": pd.to_datetime(times, unit="ms"),
+            "time": pd.to_datetime(times, unit="ms", utc=True),
             "accel_forward": accel_forward,
             "accel_lateral": np.random.normal(0, 0.05, len(times)),
             "accel_vertical": np.random.normal(9.8, 0.1, len(times)),
@@ -65,7 +65,7 @@ def test_detect_harsh_brake():
     gps_df = pd.DataFrame(
         {
             "t": [start_t, start_t + 5000, start_t + 10000],
-            "time": pd.to_datetime([start_t, start_t + 5000, start_t + 10000], unit="ms"),
+            "time": pd.to_datetime([start_t, start_t + 5000, start_t + 10000], unit="ms", utc=True),
             "lat": [22.3193, 22.3200, 22.3210],
             "lon": [114.1694, 114.1700, 114.1710],
             "speed": [10.0, 15.0, 12.0],
@@ -91,7 +91,7 @@ def test_detect_sharp_corner():
     imu_df = pd.DataFrame(
         {
             "t": times,
-            "time": pd.to_datetime(times, unit="ms"),
+            "time": pd.to_datetime(times, unit="ms", utc=True),
             "accel_forward": np.random.normal(0, 0.05, len(times)),
             "accel_lateral": accel_lateral,
             "accel_vertical": np.random.normal(9.8, 0.1, len(times)),
@@ -101,7 +101,7 @@ def test_detect_sharp_corner():
     gps_df = pd.DataFrame(
         {
             "t": [start_t, start_t + 5000, start_t + 10000],
-            "time": pd.to_datetime([start_t, start_t + 5000, start_t + 10000], unit="ms"),
+            "time": pd.to_datetime([start_t, start_t + 5000, start_t + 10000], unit="ms", utc=True),
             "lat": [22.3193, 22.3200, 22.3210],
             "lon": [114.1694, 114.1700, 114.1710],
             "speed": [10.0, 15.0, 12.0],
@@ -122,7 +122,7 @@ def test_calculate_features():
     imu_df = pd.DataFrame(
         {
             "t": times,
-            "time": pd.to_datetime(times, unit="ms"),
+            "time": pd.to_datetime(times, unit="ms", utc=True),
             "accel_forward": np.random.normal(0, 0.05, len(times)),
             "accel_lateral": np.random.normal(0, 0.05, len(times)),
             "accel_vertical": np.random.normal(9.8, 0.1, len(times)),
@@ -132,7 +132,7 @@ def test_calculate_features():
     gps_df = pd.DataFrame(
         {
             "t": np.arange(start_t, start_t + 60000, 1000),
-            "time": pd.to_datetime(np.arange(start_t, start_t + 60000, 1000), unit="ms"),
+            "time": pd.to_datetime(np.arange(start_t, start_t + 60000, 1000), unit="ms", utc=True),
             "lat": 22.3193 + np.linspace(0, 0.01, 60),
             "lon": 114.1694 + np.linspace(0, 0.01, 60),
             "speed": np.random.uniform(10, 20, 60),
@@ -142,14 +142,14 @@ def test_calculate_features():
     events = [
         {
             "type": "harsh_brake",
-            "time": datetime.utcnow(),
+            "time": datetime.now(UTC),
             "peak_g": 0.5,
             "lat": 22.32,
             "lon": 114.17,
         },
         {
             "type": "harsh_accel",
-            "time": datetime.utcnow(),
+            "time": datetime.now(UTC),
             "peak_g": 0.4,
             "lat": 22.32,
             "lon": 114.17,

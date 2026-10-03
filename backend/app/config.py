@@ -1,9 +1,13 @@
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", protected_namespaces=()
+    )
+
     database_url: str = "postgresql+psycopg://drivescore:drivescore@localhost:5432/drivescore"
     test_database_url: str | None = None
     insurer_api_key: str  # required, no default — set via env or .env
@@ -14,10 +18,6 @@ class Settings(BaseSettings):
     trip_min_distance_km: float = 1.0
     trip_max_gps_gap_s: float = 30.0
     trip_min_duration_s: float = 60.0
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 @lru_cache

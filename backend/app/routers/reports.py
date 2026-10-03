@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import func
@@ -47,13 +47,13 @@ def _is_expired_unknown(trip: Trip) -> bool:
         return False
     if trip.label_source == "user":
         return False
-    age = datetime.utcnow() - trip.created_at
+    age = datetime.now(UTC) - trip.created_at
     return age.days >= UNCONFIRMED_EXPIRY_DAYS
 
 
 def _calculate_driver_score(db: Session, driver_id: str, days: int = 90) -> tuple:
     """Calculate distance-weighted driver score over the last N days."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     results = (
         db.query(Trip, TripScore, TripFeature)
@@ -118,7 +118,7 @@ def _calculate_driver_score(db: Session, driver_id: str, days: int = 90) -> tupl
 
 def _calculate_passenger_stats(db: Session, driver_id: str, days: int = 90) -> dict:
     """Calculate passenger share and label source breakdown."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     trips = (
         db.query(Trip)
@@ -335,7 +335,7 @@ def get_insurer_overview(
     _: None = Depends(get_current_insurer),
     db: Session = Depends(get_db),
 ):
-    cutoff = datetime.utcnow() - timedelta(days=90)
+    cutoff = datetime.now(UTC) - timedelta(days=90)
 
     total_drivers = db.query(func.count(Driver.id)).scalar()
 
@@ -426,7 +426,7 @@ def get_insurer_driver_detail(
     )
     passenger_stats = _calculate_passenger_stats(db, driver.id)
 
-    cutoff = datetime.utcnow() - timedelta(days=90)
+    cutoff = datetime.now(UTC) - timedelta(days=90)
     events = (
         db.query(Event.type, func.count(Event.id))
         .join(Trip, Trip.id == Event.trip_id)

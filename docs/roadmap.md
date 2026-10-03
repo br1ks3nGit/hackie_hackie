@@ -31,17 +31,24 @@ Open (the director escalates these when the increment needs them):
 - [x] A4 Postgres: psycopg + Alembic with a baseline revision from the current models, replace
       `create_all` with `alembic upgrade head`, `.env.example` uses Postgres, tests run on Postgres
       (tmp `DATA_DIR`, nothing written to the real `data/raw/`), CI Postgres service + `alembic check` drift test.
-- [ ] A5 Docker: backend `Dockerfile` (uv), `docker-compose.yml` with Postgres + API (migrations on
+- [x] A5 Docker: backend `Dockerfile` (uv), `docker-compose.yml` with Postgres + API (migrations on
       start, `data/raw` and `models/` volumes, healthchecks), README "run everything" section.
-- [ ] A6 Pydantic v2 validators (`field_validator`, `min_length`, `model_dump`) and timezone-aware
+- [x] A6 Pydantic v2 validators (`field_validator`, `min_length`, `model_dump`) and timezone-aware
       timestamps (`datetime.now(UTC)`, `timestamptz` revision); drop the DTZ ignores and the ty
       `deprecated` downgrade.
 - [ ] A7 Size limits: split `app/pipeline.py` and `app/routers/reports.py` under 500 lines and
       `process_trip` under 100 lines, no behavior change.
-- [ ] A8 Typed models: `Mapped[...]` / `mapped_column` so ty's `invalid-argument-type` and
+- [x] A8 Typed models: `Mapped[...]` / `mapped_column` so ty's `invalid-argument-type` and
       `invalid-assignment` rules go back to error.
 - [ ] A9 FK indexes: `index=True` on `trips.driver_id`, `events.trip_id`, `incidents.driver_id`,
       `incidents.trip_id`, `consents.driver_id` + revision 0002 (keeps the drift test green).
+- [ ] A10 Readable schema: `Literal` types for status/tier/type fields, `Field(description, examples)`
+      on every API schema, typed models instead of bare dicts, a `TripFeatures` Pydantic model for
+      the pipeline/model contract, table docstrings and column comments, `docs/data-model.md` with
+      a Mermaid ER diagram and allowed values.
+- [ ] A11 Small cleanups: single `score_to_tier` (drop the copy in `reports.py`), mobile
+      `client.ts` types match the API (`TripListItem` fields), remove legacy `mobile/src/types.ts`
+      types and unused deps, `backend/.env.example` on Postgres (user edit: file is agent-denied).
 
 ## Phase C - Known bugs
 - [ ] C1 `POST /v1/me/incidents`: check the trip belongs to the driver.

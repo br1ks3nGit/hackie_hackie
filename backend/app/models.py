@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -16,6 +16,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
+def utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
 class Driver(Base):
     __tablename__ = "drivers"
 
@@ -23,7 +27,9 @@ class Driver(Base):
     api_key_hash: Mapped[str] = mapped_column(String, nullable=False)
     emergency_contact_name: Mapped[str | None] = mapped_column(String, nullable=True)
     emergency_contact_phone: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
     trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="driver")
 
@@ -34,7 +40,9 @@ class Consent(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     driver_id: Mapped[str] = mapped_column(String, ForeignKey("drivers.id"), nullable=False)
     version: Mapped[str] = mapped_column(String, nullable=False)
-    granted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
 
 class Trip(Base):
@@ -44,8 +52,8 @@ class Trip(Base):
     driver_id: Mapped[str] = mapped_column(String, ForeignKey("drivers.id"), nullable=False)
     # uploading, processing, done, failed
     status: Mapped[str] = mapped_column(String, nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     # driver, passenger, transit, unknown
     trip_type: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -54,7 +62,9 @@ class Trip(Base):
     driver_likelihood: Mapped[float | None] = mapped_column(Float, nullable=True)
     transit_line: Mapped[str | None] = mapped_column(String, nullable=True)
     bluetooth_connected_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
     driver: Mapped["Driver"] = relationship("Driver", back_populates="trips")
     chunks: Mapped[list["TripChunk"]] = relationship("TripChunk", back_populates="trip")
@@ -74,7 +84,9 @@ class TripChunk(Base):
     trip_id: Mapped[str] = mapped_column(String, ForeignKey("trips.id"), nullable=False)
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
     file_path: Mapped[str] = mapped_column(String, nullable=False)
-    received_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="chunks")
 
@@ -88,7 +100,7 @@ class Event(Base):
     trip_id: Mapped[str] = mapped_column(String, ForeignKey("trips.id"), nullable=False)
     # harsh_brake, harsh_accel, sharp_corner, speeding
     type: Mapped[str] = mapped_column(String, nullable=False)
-    time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     peak_g: Mapped[float | None] = mapped_column(Float, nullable=True)
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -104,7 +116,9 @@ class TripFeature(Base):
         String, ForeignKey("trips.id"), nullable=False, unique=True
     )
     features: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="features")
 
@@ -120,7 +134,9 @@ class TripScore(Base):
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     tier: Mapped[str] = mapped_column(String, nullable=False)
     model_version: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="score")
 
@@ -132,11 +148,13 @@ class Incident(Base):
     driver_id: Mapped[str] = mapped_column(String, ForeignKey("drivers.id"), nullable=False)
     trip_id: Mapped[str | None] = mapped_column(String, ForeignKey("trips.id"), nullable=True)
     type: Mapped[str] = mapped_column(String, nullable=False)  # crash
-    time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     peak_g: Mapped[float | None] = mapped_column(Float, nullable=True)
     # ok, help_needed, no_response
     confirmed: Mapped[str | None] = mapped_column(String, nullable=True)
     sensor_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
