@@ -1,49 +1,18 @@
-import os
 from datetime import datetime, timedelta
 
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.auth import hash_api_key
-from app.database import Base, get_db
+from app.database import SessionLocal
 from app.main import app
 from app.models import Driver, Trip, TripFeature, TripScore
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_scoring.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-@pytest.fixture(autouse=True)
-def db_override():
-    app.dependency_overrides[get_db] = override_get_db
-    Base.metadata.create_all(bind=engine)
-    yield
-    app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=engine)
-
 
 client = TestClient(app)
 
 
-def teardown_module():
-    if os.path.exists("./test_scoring.db"):
-        os.remove("./test_scoring.db")
-
-
 def _seed_driver_with_scored_trips():
     """Insert one driver with two scored trips directly into the test DB."""
-    db = TestingSessionLocal()
+    db = SessionLocal()
     api_key = "test-scoring-driver-key"
     driver = Driver(id="drv-test-scoring", api_key_hash=hash_api_key(api_key))
     db.add(driver)

@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.database import Base, engine
 from app.model import load_model
 from app.routers import admin, ingestion, reports
 
@@ -22,9 +21,6 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting DriveScore API")
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created")
-
     load_model()
     logger.info("Model loaded successfully")
 
