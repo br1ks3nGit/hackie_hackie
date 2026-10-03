@@ -68,7 +68,8 @@ Open (the director escalates these when the increment needs them):
 - [x] M2 i18n (en, zh-CN, zh-HK) + language picker + Noto fonts.
 - [x] M3 Tab bar + Home / Trips / Trip detail on real data (no places); multiplier shown as a saving.
 - [x] M4 Onboarding with real consent + Coach tips.
-- [ ] M5 `DELETE /v1/me` + Privacy screen.
+- [x] M5a `DELETE /v1/me` (backend, see P-phase entry M5a).
+- [x] M5b Privacy screen: data card, delete-all with inline confirm; delete is blocked while recording.
 - [ ] M6 Daily reminders via expo-notifications.
 
 ## Phase F - Insurer dashboard

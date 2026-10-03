@@ -41,6 +41,45 @@ function useDrivingMode() {
   return { drivingMode, drivingModeRef, changeDrivingMode };
 }
 
+// Ends the trip and polls until processed (up to ~60 s). False if cancelled (unmounted).
+async function endAndPoll(tripId: string, key: string, cancelled: () => boolean): Promise<boolean> {
+  await endTrip(tripId, key);
+  let status = 'processing';
+  for (let i = 0; i < STATUS_POLL_MAX && status === 'processing'; i++) {
+    if (cancelled()) return false;
+    await new Promise((resolve) => setTimeout(resolve, STATUS_POLL_MS));
+    if (cancelled()) return false;
+    status = (await getTripStatus(tripId, key)).status;
+  }
+  return !cancelled();
+}
+
+// Stops sensors and drops the detector on unmount (e.g. after account deletion); the returned
+// ref turns true so in-flight status polling stops.
+function useUnmountGuard(detectorRef: { current: TripDetector | null }) {
+  const cancelledRef = useRef(false);
+  useEffect(() => {
+    cancelledRef.current = false;
+    return () => {
+      cancelledRef.current = true;
+      stopSensors();
+      detectorRef.current = null;
+    };
+  }, [detectorRef]);
+  return cancelledRef;
+}
+
+// Count of stop/end/poll operations in flight; `finishing` is pending > 0
+function usePending() {
+  const [finishing, setFinishing] = useState(false);
+  const pendingRef = useRef(0);
+  const trackPending = (delta: number) => {
+    pendingRef.current += delta;
+    setFinishing(pendingRef.current > 0);
+  };
+  return { finishing, trackPending };
+}
+
 // Recording state: detector refs, start/stop, chunk upload, end + status polling, driving mode.
 export function useRecording(apiKey: string | null, onTripProcessed: () => void) {
   const { t } = useLanguage();
@@ -52,22 +91,22 @@ export function useRecording(apiKey: string | null, onTripProcessed: () => void)
   const [inTrip, setInTrip] = useState(false);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [chunkCount, setChunkCount] = useState(0);
-
+  const [starting, setStarting] = useState(false);
+  const { finishing, trackPending } = usePending();
   const detectorRef = useRef<TripDetector | null>(null);
   const { drivingMode, drivingModeRef, changeDrivingMode } = useDrivingMode();
 
+  const cancelledRef = useUnmountGuard(detectorRef);
+
   const finishTrip = async (tripId: string, key: string) => {
+    trackPending(1);
     try {
-      await endTrip(tripId, key);
-      // Poll until the backend finishes processing (up to ~60 s)
-      let status = 'processing';
-      for (let i = 0; i < STATUS_POLL_MAX && status === 'processing'; i++) {
-        await new Promise((resolve) => setTimeout(resolve, STATUS_POLL_MS));
-        status = (await getTripStatus(tripId, key)).status;
-      }
-      onProcessedRef.current();
+      const done = await endAndPoll(tripId, key, () => cancelledRef.current);
+      if (done) onProcessedRef.current();
     } catch (err) {
       console.error('Failed to end trip', err);
+    } finally {
+      trackPending(-1);
     }
   };
 
@@ -95,11 +134,18 @@ export function useRecording(apiKey: string | null, onTripProcessed: () => void)
       setRecording(false);
       // forceEnd awaits the final chunk upload (with retries); onTripEnd -
       // which sends /end - fires only after the last chunk is acknowledged
-      await detectorRef.current?.forceEnd();
+      trackPending(1);
+      try {
+        await detectorRef.current?.forceEnd();
+      } finally {
+        trackPending(-1);
+      }
       return;
     }
+    setStarting(true);
 
     if (!apiKey) {
+      setStarting(false);
       Alert.alert(t('notReadyTitle'), t('notReadyBody'));
       return;
     }
@@ -118,6 +164,8 @@ export function useRecording(apiKey: string | null, onTripProcessed: () => void)
     } catch (err) {
       Alert.alert(t('errorTitle'), t('startError'));
       console.error(err);
+    } finally {
+      setStarting(false);
     }
   };
 
@@ -126,6 +174,7 @@ export function useRecording(apiKey: string | null, onTripProcessed: () => void)
     inTrip,
     currentTripId,
     chunkCount,
+    busy: starting || recording || finishing,
     drivingMode,
     changeDrivingMode,
     toggleRecording,

@@ -19,6 +19,7 @@ interface Session {
   failed: boolean;
   retry: () => void;
   completeOnboarding: () => Promise<void>;
+  signOutAfterDelete: () => Promise<void>;
 }
 
 async function registerAndConsent(): Promise<{ driverId: string; apiKey: string }> {
@@ -107,6 +108,23 @@ export function useSession(): Session {
     setStatus('ready');
   }, []);
 
+  // After the server erased the driver: drop credentials and the consent flag (language stays)
+  // and return to onboarding. State resets even if storage cleanup throws.
+  const signOutAfterDelete = useCallback(async () => {
+    storedKey.current = null;
+    try {
+      await AsyncStorage.multiRemove([
+        STORAGE_KEYS.DRIVER_ID,
+        STORAGE_KEYS.API_KEY,
+        STORAGE_KEYS.ONBOARDED,
+      ]);
+    } finally {
+      setApiKey(null);
+      setFailed(false);
+      setStatus('onboarding');
+    }
+  }, []);
+
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
-  return { status, apiKey, failed, retry, completeOnboarding };
+  return { status, apiKey, failed, retry, completeOnboarding, signOutAfterDelete };
 }

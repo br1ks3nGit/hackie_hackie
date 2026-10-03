@@ -30,6 +30,13 @@ export const en = {
   cancel: 'Cancel',
   delete: 'Delete',
   deletionRequested: 'Deletion requested. Your trip data will be removed.',
+  dataTitle: 'Your data',
+  dataBody:
+    'During recorded trips the app reads motion sensors, and GPS only for speed. It never collects or stores your location, coordinates or routes. We use this data only to work out your driving score and premium multiplier. You gave consent when you set up the app, as required by the PDPO. You can delete all your data at any time below.',
+  deleting: 'Deleting...',
+  deletionDone: 'Your data has been deleted.',
+  deleteError: 'Error: Could not confirm deletion of your data. Please try again.',
+  stopRecordingFirst: 'Stop recording before deleting your data.',
   onboarding1Title: 'Visitor cover for Hong Kong',
   onboarding1Body:
     'Temporary motor insurance for Mainland visitors driving a Mainland-registered car in Hong Kong.',
@@ -48,7 +55,7 @@ export const en = {
   skip: 'Skip for now',
   back: 'Back',
   stepOf: 'Step {n} of {total}',
-  consentData: 'We collect phone motion and location data while you record a trip, to score your driving. You can delete it any time in Privacy.',
+  consentData: 'During recorded trips the app reads motion sensors, and GPS only for speed. It never collects or stores your location, coordinates or routes. We use this to score your driving. You can delete it any time in Privacy.',
   starting: 'Starting...',
   reminders: 'Trip reminders',
   remindersDetail: 'Get a daily nudge to start recording before you set off.',
