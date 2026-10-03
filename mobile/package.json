@@ -12,9 +12,11 @@
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-community/datetimepicker": "8.0.1",
     "expo": "~51.0.0",
     "expo-constants": "~16.0.0",
     "expo-location": "~17.0.0",
+    "expo-notifications": "~0.28.19",
     "expo-sensors": "~13.0.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",

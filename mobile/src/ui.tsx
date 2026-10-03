@@ -307,5 +307,5 @@ const styles = StyleSheet.create({
   },
   label: { textAlign: 'center' },
   pressed: { opacity: 0.9 },
-  disabled: { opacity: 0.5 },
+  disabled: { opacity: theme.disabledOpacity },
 });

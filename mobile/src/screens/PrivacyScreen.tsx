@@ -13,6 +13,7 @@ import { styles as shared } from '../appStyles';
 import { Card, PageHeader, PrimaryButton, SecondaryButton } from '../ui';
 import { ErrorBanner } from '../uiBlocks';
 import { LanguagePicker } from '../LanguagePicker';
+import { ReminderCard } from '../ReminderCard';
 import { deleteMe } from '../api/client';
 
 interface PrivacyScreenProps {
@@ -103,6 +104,7 @@ export function PrivacyScreen({ apiKey, recording, onDeleted }: PrivacyScreenPro
         </Text>
         <Text style={styles.body}>{t('dataBody')}</Text>
       </Card>
+      <ReminderCard />
       <View accessibilityLiveRegion="polite">
         {recording ? (
           <View style={styles.notice}>

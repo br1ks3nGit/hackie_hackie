@@ -63,6 +63,11 @@ export const en = {
   reminderTime: 'Remind me at',
   reminderTitle: 'Time to drive?',
   reminderBody: 'Start recording so this trip counts toward your visitor cover.',
+  reminderToggle: 'Daily reminder',
+  reminderDenied: 'Notifications are turned off for DriveScore, so we cannot send reminders.',
+  openSettings: 'Open settings',
+  reminderWhy: 'We will ask to send notifications so we can remind you. Reminders stay on your phone.',
+  reminderNotOnWeb: 'Reminders need the phone app and are not available on web.',
   tip1Title: 'Slow down before Hong Kong roundabouts.',
   tip1Body:
     'Your Mainland car is left-hand drive. Enter slowly, keep left and check your right mirror before exiting.',
