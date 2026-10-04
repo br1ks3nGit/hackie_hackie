@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from './src/theme';
 import { LanguageProvider, useLanguage } from './src/i18n';
 import { BottomTabBar } from './src/ui';
+import { AppHeader } from './src/AppHeader';
 import { OfflineBanner } from './src/uiBlocks';
 import { useSession } from './src/useSession';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
@@ -71,6 +72,7 @@ function Main() {
   if (status === 'onboarding') {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+        <AppHeader />
         <OnboardingScreen onComplete={completeOnboarding} />
       </SafeAreaView>
     );
@@ -78,6 +80,7 @@ function Main() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+      <AppHeader />
       <OfflineBanner />
       {/* Home stays mounted (hidden) so recording state survives tab switches */}
       <View style={tab === 'home' ? styles.flex1 : styles.hidden}>
