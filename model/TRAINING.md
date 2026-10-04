@@ -242,3 +242,120 @@ All details below: per official dataset page, checked 2026-10-04.
   11/11, left/right lane change 4/5, non-aggressive 14) with start/end seconds in groundTruth.csv;
   accel m/s^2, gyro rad/s.
 - Use for internal evaluation only: do not commit, redistribute, or ship models derived solely from it.
+
+## 8. Retrain v2 (2026-10-04)
+
+Code: `model/retrain/{features_v2,train_v2,check_saturation,test_features_v2}.py`. Artifacts:
+`model/retrained_model/{model.json,metrics.json}` (`window-logreg-v2`, feature set
+`horizontal-mag-v2`). Trained on k-pro (`~/Sites/model-retrain-work/`, Python 3.9 venv with
+numpy/pandas/pyarrow/scikit-learn). Pinned on k-pro: Python 3.9.6, numpy 2.0.2, scipy 1.13.1,
+scikit-learn 1.6.1, pandas 2.3.3, pyarrow 21.0.0; two reruns with these versions gave identical
+model.json and metrics.json. Not wired into the backend.
+
+### Data used
+Snapshot `leakage_safe/{train,stopping,calibration,test}.parquet` (VED only). `external_DAF` is
+never loaded; Ferreira is evaluation only (run once on the frozen model, nothing tuned on it).
+- The parquet files hold only the 106 extracted features plus ids; there are NO raw ax/ay/az
+  samples (raw VED CSVs are not in the snapshot or elsewhere on k-pro). So the feature set must be
+  derivable from the extracted columns.
+- Rows (label 0/1 balance is exactly 50%, each base window appears twice: baseline + injected):
+  train 7,598; stopping 2,068; calibration 2,592; test 5,500.
+- Grouping: column `car`; cars are disjoint across all partitions (train 18, stopping 12,
+  calibration 12, test 13; checked, 0 overlaps); `base_window_id` pairs never cross a split.
+- No NaN or inf. Degenerate in train (IQR < 1e-3): `mag_min` (5.7e-18), `mag_zcr`, `mag_dom_freq`
+  (constant 0), plus all `az_*` (synthetic zeros).
+
+### Feature set (28)
+Only quantities that do not depend on the phone's heading, so they are the same on VED (vehicle
+frame, az = 0) and on a phone (gravity on any axis):
+- 23 `mag_*` features = time stats, percentiles, jerk, spectral entropy/centroid/low-energy ratio,
+  energy and peak count of the horizontal magnitude. In VED `mag` = |high-passed (ax, ay)| because
+  az = 0. Excluded: `mag_min`, `mag_zcr`, `mag_dom_freq` (degenerate).
+- 5 rotation-invariant summaries of the horizontal covariance/jerk, derived from the extracted
+  columns: `h_std_total`, `h_std_major`, `h_std_minor` (eigenvalues of [[sx^2, r sx sy], [., sy^2]]),
+  `h_anisotropy` (minor/major), `h_jerk_rms` (sqrt(ax_jerk_rms^2 + ay_jerk_rms^2)).
+- Dropped as not well defined on phones: all `az_*`; every per-axis `ax_*`/`ay_*` feature,
+  `event_*` counts and `ax_ay_corr` (a device axis is not the vehicle axis, so they change with
+  orientation/heading); `ax_az_corr`, `ay_az_corr`.
+- Phone path (`features_v2.phone_window_features`): gravity direction = window mean (norm
+  >= 0.5 g, else the first two columns are used as is), project to two horizontal axes, 0.5 Hz
+  causal high-pass, then the same features. `test_features_v2.py` checks training columns (v1
+  extractor on az = 0 data) equal the serving features to 1e-6.
+
+### Decisions
+- Logistic regression, robust (median/IQR) scaler fit on train. Scale floor
+  `max(IQR, 1e-3, 0.1 * std)` (min scale in the model 0.0113); z-scores clipped to +-10 at train and
+  serve time (`z_clip` in model.json; serving must apply it, v1 `window_model.py` does not).
+- Selection code uses the stopping partition only: feature set `mag_plus_invariants` (stopping
+  AUC 0.93 vs 0.92 for `mag_only`), then the smallest C within 0.01 stopping AUC of the best (0.9345
+  at C=100), which gives C = 0.1. C=0.1 passes the tolerance by ~1e-4 (0.92458 vs threshold
+  0.92449), so a tiny change flips the choice to C = 1 (stopping 0.928).
+- History, stated plainly: the first run used plain best-AUC selection (C=100) and printed test AUC
+  0.916 (C=100 had coefficients of about +-30 on near-collinear std/rms/h_std_* features). The rule
+  was then changed to the tolerance rule above. So the test partition was looked at twice and the
+  rule change was made after seeing it; the rule itself uses only stopping AUC and coefficient
+  size. v1 had already been evaluated on Ferreira before this; whether the v2 decision was
+  independent of Ferreira cannot be verified, so treat Ferreira numbers as indicative only.
+  Cost of C=0.1 vs C=100: ~0.016 test AUC (0.900 vs 0.916), all |coef| <= 3.45.
+- Platt on the calibration partition (a = 1.135, b = 0.085), threshold 0.5, test scored once.
+
+### VED test (threshold 0.5) vs remade v1
+| model | features | AUC | F1 | FPR | train AUC | overfit gap |
+|---|---|---|---|---|---|---|
+| v1 remade logreg (REPORT.md) | 80, incl. ax/ay/az-dependent, mag_min | 0.956 | 0.892 | 9.3% | - | 0.005 |
+| v2 retrained | 28 horizontal-invariant | 0.900 | 0.822 | 17.1% | 0.920 | 0.020 |
+
+v2 is worse on VED by design: it gives up the vehicle-frame ax/ay information that VED has and a
+phone does not. F1 0.822, accuracy 0.823, logloss 0.404. REPORT.md also lists
+`safe_plus_mag` (20 features) at AUC 0.850 / FPR 21.2%; v2 is better than that fallback.
+
+### Saturation check (`check_saturation.py`, synthetic phone windows)
+- 500 windows, gravity 1 g on a random axis (random rotation), noise 0.005-0.1 g, 0-1.2 g pulse:
+  max |logit| = 8.52, risk min / median / max = 0.000 / 0.044 / 0.910. No saturation
+  (test windows: max |logit| 11.4 on VED itself).
+- Same 0.9 g pulse, az = 0 vs az = 1 g: v2 logit -3.183 vs -3.182 (risk 0.029 both). v1: risk
+  8.1e-7 vs 4.6e-194.
+- 100 random rotations of one window: max |delta risk| = 0.0000. Tests: exact 3-D rotations
+  agree to 1e-6 logit; gravity vs no gravity differs by ~1e-3 logit (the window-mean gravity
+  estimate shifts slightly), test bound 0.05. Parity tests cover a zero-variance axis, correlated
+  ax/ay and an in-plane rotation of correlated ax/ay.
+- Note the 5-sample pulse itself scores low (0.029): a 0.1 s spike is not the 5 s-scale
+  pattern the synthetic positives resemble; the check is about stability, not detection.
+
+### Ferreira 2017 (evaluation only; same protocol as section 5)
+| | A shipped | B no mag_min (diag.) | C v2 retrained |
+|---|---|---|---|
+| ROC AUC, 55 aggressive vs 14 non-aggressive | 0.552 | 0.769 | 0.910 |
+| Detection @0.5, aggressive overall | 0.00 | 0.98 | 0.40 |
+| By type (brake / accel / turns / lane changes) | 0 | 1.00 / 0.92 / 1.00 / 1.00 | 0.75 / 0.00 / 0.27 / 0.78 |
+| Non-aggressive events > 0.5 | 0.00 | 0.50 | 0.00 |
+| Unlabelled windows > 0.5 (rough false positives) | 0.00 | 0.32 | 0.01 |
+
+C is the first variant that ranks aggressive above non-aggressive events well (AUC 0.91) with
+almost no false positives, but at threshold 0.5 it misses mild accelerations and right turns
+(median scores 0.04 and 0.20): the threshold is calibrated at 50% synthetic prevalence. Turns:
+left 0.55, right 0.00 detected; lane changes right 1.00, left 0.50.
+
+### model.json schema (`window-logreg-v2`)
+`model_type`, `version` ("window-logreg-v2"), `feature_set` ("horizontal-mag-v2"),
+`feature_names` (28, names from `features_v2`), `scaler` {`type` "robust_median_iqr_floored",
+`center`, `scale`}, `scale_floor` {`abs` 1e-3, `rel_std` 0.1} (training-time record),
+`z_clip` (10), `coef`, `intercept`, `calibration` {`type` "platt_sigmoid", `coef`, `intercept`},
+`threshold` (0.5), `input_contract` (text), `fit_on` (text). Score = expit(cal.coef * logit +
+cal.intercept), logit = clip((x - center) / scale, -z_clip, z_clip) @ coef + intercept.
+A v2 backend loader must apply `z_clip` (v1 `window_model.py` has no clip step) and must validate
+this schema (required keys, equal list lengths, feature names known to `features_v2`, version);
+v1 validation checks v1 feature names only and would reject or mis-score v2.
+
+### Honest limits
+- Labels are still synthetic injected pulses vs assumed-normal baselines; no validated
+  risky-driving labels. 50% prevalence is artificial; per-window precision at 1-5% real prevalence
+  will be low, so trip-level aggregation is still required.
+- Ferreira: 69 events, 2 drivers, earth-frame data, fixed windscreen mount; indicative only. v2
+  was not tuned on it, but it is the only phone-like check and was looked at once.
+- Gravity direction = window mean assumes a roughly fixed phone pose within 5 s; a pose change
+  inside a window leaks into the horizontal part (the high-pass removes slow drift only).
+- Gyro, GPS speed and Mendeley are not used (Mendeley still blocked, section 5).
+- Acceptance (section 6.9): no-saturation MET (synthetic, max |logit| 8.5); orientation test MET
+  (random rotations change risk by < 1e-4); "beats the placeholder on held-out Mendeley trips"
+  NOT assessed (Mendeley unlabelled, not used).

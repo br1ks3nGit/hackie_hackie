@@ -4,13 +4,16 @@ Ferreira 2017 has no licence: never train on it, never commit its data (gitignor
 Run: uv run --project backend python model/eval_ferreira.py
 
 Variant A = model as shipped. Variant B = diagnostic copy with mag_min zeroed (coef = 0); it is
-NOT a new model. Caveats: 69 events, 2 drivers, earth-frame data (our app is device-frame),
+NOT a new model. Variant C = retrained v2 model (model/retrained_model, horizontal-plane features
+from model/retrain/features_v2.py), trained on VED only.
+Caveats: 69 events, 2 drivers, earth-frame data (our app is device-frame),
 only the 14 non-aggressive events are true negatives; results are indicative only.
 """
 
 import copy
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -19,10 +22,14 @@ from scipy.stats import rankdata
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT.parent / "backend"))
+sys.path.insert(0, str(ROOT / "retrain"))
+import features_v2  # noqa: E402
+
 from app.window_model import SAMPLE_RATE_HZ, WINDOW_SAMPLES, score_window  # noqa: E402
 
 DATA = ROOT / "data" / "external" / "ferreira_2017" / "data"
 MODEL = ROOT / "remade_model" / "model.json"
+MODEL_V2 = ROOT / "retrained_model" / "model.json"
 G = 9.80665
 THRESHOLD = 0.5
 NEG_MIN_DISTANCE_S = 10.0
@@ -94,9 +101,14 @@ def collect(trips: list[dict]) -> tuple[pd.DataFrame, list[np.ndarray]]:
     return pd.DataFrame(rows), neg_windows
 
 
-def report(name: str, model: dict, events: pd.DataFrame, negs: list[np.ndarray]) -> None:
-    ev = events.assign(score=[score_window(w, model)["risk_score"] for w in events["window"]])
-    neg_scores = np.array([score_window(w, model)["risk_score"] for w in negs])
+def report(
+    name: str,
+    scorer: Callable[[np.ndarray], float],
+    events: pd.DataFrame,
+    negs: list[np.ndarray],
+) -> None:
+    ev = events.assign(score=[scorer(w) for w in events["window"]])
+    neg_scores = np.array([scorer(w) for w in negs])
     aggressive = ev["type"] != NON_AGGRESSIVE
     print(f"\n=== {name} ===")
     print(f"{'type':32s} {'n':>3s} {'min':>6s} {'median':>6s} {'max':>6s} {'det@0.5':>8s}")
@@ -117,6 +129,14 @@ def report(name: str, model: dict, events: pd.DataFrame, negs: list[np.ndarray])
 def main() -> None:
     model = json.loads(MODEL.read_text())
     model.setdefault("threshold", THRESHOLD)
+    model_v2 = json.loads(MODEL_V2.read_text())
+
+    def v1(m: dict) -> Callable[[np.ndarray], float]:
+        return lambda w: float(score_window(w, m)["risk_score"])
+
+    def v2(w: np.ndarray) -> float:
+        return float(features_v2.score_window(w, model_v2)["risk_score"])
+
     trips = [load_trip(t) for t in ("16", "17", "20", "21")]
     events, negs = collect(trips)
     print("Ferreira 2017 evaluation (EVALUATION ONLY, no training, data not committed)")
@@ -125,8 +145,9 @@ def main() -> None:
     )
     print("Caveats: n tiny (69 events, 2 drivers); earth-frame data, not device-frame; only the")
     print("14 non-aggressive events are true negatives; indicative only.")
-    report("A: model as shipped", model, events, negs)
-    report("B: DIAGNOSTIC mag_min zeroed (not a new model)", patched_model(model), events, negs)
+    report("A: model as shipped", v1(model), events, negs)
+    report("B: DIAGNOSTIC mag_min zeroed (not a new model)", v1(patched_model(model)), events, negs)
+    report("C: retrained v2 (window-logreg-v2)", v2, events, negs)
 
 
 if __name__ == "__main__":

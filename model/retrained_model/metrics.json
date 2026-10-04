@@ -1,0 +1,100 @@
+{
+  "selected_set": "mag_plus_invariants",
+  "C": 0.1,
+  "n_features": 28,
+  "ved_test": {
+    "auc": 0.900210909090909,
+    "f1": 0.8220881331139148,
+    "acc": 0.8230909090909091,
+    "fpr": 0.17127272727272727,
+    "logloss": 0.40364770643407105
+  },
+  "train": {
+    "auc": 0.9201070563380271,
+    "f1": 0.8400689015502849,
+    "acc": 0.8411424058962885,
+    "fpr": 0.152145301395104,
+    "logloss": 0.3602141831587815
+  },
+  "overfit_gap_auc": 0.01989614724711819,
+  "max_abs_logit_test": 11.402579031124473,
+  "min_scale": 0.01125320729900554,
+  "platt": {
+    "a": 1.1351258182709205,
+    "b": 0.0848946070989291
+  },
+  "selection_grid": [
+    {
+      "set": "mag_only",
+      "C": 0.001,
+      "n": 23,
+      "stopping_auc": 0.8770076583772621
+    },
+    {
+      "set": "mag_only",
+      "C": 0.01,
+      "n": 23,
+      "stopping_auc": 0.907987234790807
+    },
+    {
+      "set": "mag_only",
+      "C": 0.1,
+      "n": 23,
+      "stopping_auc": 0.9154398422681067
+    },
+    {
+      "set": "mag_only",
+      "C": 1.0,
+      "n": 23,
+      "stopping_auc": 0.9186545274964552
+    },
+    {
+      "set": "mag_only",
+      "C": 10.0,
+      "n": 23,
+      "stopping_auc": 0.9193803336463527
+    },
+    {
+      "set": "mag_only",
+      "C": 100.0,
+      "n": 23,
+      "stopping_auc": 0.9199106585007238
+    },
+    {
+      "set": "mag_plus_invariants",
+      "C": 0.001,
+      "n": 28,
+      "stopping_auc": 0.8957420619628942
+    },
+    {
+      "set": "mag_plus_invariants",
+      "C": 0.01,
+      "n": 28,
+      "stopping_auc": 0.9199733247533568
+    },
+    {
+      "set": "mag_plus_invariants",
+      "C": 0.1,
+      "n": 28,
+      "stopping_auc": 0.9245806972976816
+    },
+    {
+      "set": "mag_plus_invariants",
+      "C": 1.0,
+      "n": 28,
+      "stopping_auc": 0.9279805753323181
+    },
+    {
+      "set": "mag_plus_invariants",
+      "C": 10.0,
+      "n": 28,
+      "stopping_auc": 0.9336177321176703
+    },
+    {
+      "set": "mag_plus_invariants",
+      "C": 100.0,
+      "n": 28,
+      "stopping_auc": 0.9344903830685138
+    }
+  ]
+}
