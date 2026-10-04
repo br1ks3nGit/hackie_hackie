@@ -241,7 +241,7 @@ to reset everything).
 | `DATA_DIR` | `./data/raw` | Where raw gzip chunks are written (`<DATA_DIR>/<trip_id>/<seq>.json.gz`). |
 | `MODEL_PATH` | `./models/model.pkl` | Optional pickled model, loaded once at startup. |
 | `MODEL_KIND` | `placeholder` | `placeholder` (rules, or `MODEL_PATH` pickle if present) or `window` (250-sample window model, section 8.4). |
-| `WINDOW_MODEL_PATH` | `../model/remade_model/model.json` (compose: `/models/window/model.json`) | `model.json` of the window model; with `MODEL_KIND=window` the API refuses to start if it is missing or invalid. |
+| `WINDOW_MODEL_PATH` | `../model/retrained_model/model.json` (compose: `/models/window/model.json`) | `model.json` of the window model; with `MODEL_KIND=window` the API refuses to start if it is missing or invalid. |
 | `TRIP_MIN_DISTANCE_KM` | `1.0` | Quality check: minimum trip distance. |
 | `TRIP_MAX_GPS_GAP_S` | `30.0` | Quality check: maximum gap between GPS speed samples. |
 | `TRIP_MIN_DURATION_S` | `60.0` | Quality check: minimum trip duration. |
@@ -653,28 +653,33 @@ Only unpickle files you trust; pickle can execute code.
 
 #### Window model (`MODEL_KIND=window`)
 
-Optional second model from `model/remade_model/` (logistic regression over 80 accelerometer
-window features, pure JSON, no pickle). Default is `MODEL_KIND=placeholder`, which leaves scoring
-exactly as above. To enable: set `MODEL_KIND=window` (docker compose mounts
-`./model/remade_model` read-only at `/models/window`; with `uv run` the default
-`WINDOW_MODEL_PATH` points at the repo folder) and restart the API.
+Optional second model: logistic regression over accelerometer window features, pure JSON, no
+pickle. The default is v2 (`model/retrained_model/`, `window-logreg-v2`, feature set
+`horizontal-mag-v2`); v1 (`model/remade_model/`, `window-logreg-v1`) is kept for reference. The
+loader picks the scorer from the model file (`feature_set` present = v2) and fails fast on an
+invalid or mismatched file. Default is `MODEL_KIND=placeholder`, which leaves scoring exactly as
+above. To enable: set `MODEL_KIND=window` (docker compose mounts `./model/retrained_model`
+read-only at `/models/window`; with `uv run` the default `WINDOW_MODEL_PATH` points at the repo
+folder) and restart the API. To use v1, point `WINDOW_MODEL_PATH` at
+`model/remade_model/model.json`.
 
 - Input: the trip's accelerometer after the 50 Hz resample (units g, gravity included; the
-  model removes gravity itself, per window). It does not use the car-frame channels.
+  model removes gravity itself, per window). It does not use the car-frame channels. v2 projects
+  each window onto two horizontal axes (gravity = window mean), so any phone orientation works.
 - The grid is cut into non-overlapping 250-sample (5 s) windows; the short tail is dropped.
 - Trip confidence = share of windows with `risk_score` > 0.5. Higher confidence is riskier, so
   `score = round(100 * (1 - share))` as before; tier and multiplier follow unchanged.
-- `trip_scores.model_version` is `window-logreg-v1`. A trip with no scorable window falls back
-  to the placeholder result and is recorded as `placeholder-window-fallback`.
-- Caveat (from `model/remade_model/REPORT.md`): labels are synthetic injected pulses and there
-  is no validation set of phone data. Treat `risk_score` as a demo signal, not a verified risk
-  measure. Known cause of a saturated signal: the `mag_min` scaler scale in `model.json` is
-  about 5.7e-18 (inherited from VED's synthetic zero axis), so on real phone windows the logit
-  saturates, risk is about 0, trip confidence is 0 and the score is 100. The port is faithful
-  (the parity test against `serve.py` passes); the fix is retraining. Use `MODEL_KIND=window`
-  for demos only until the model is retrained.
+- `trip_scores.model_version` is the `version` in the model file (`window-logreg-v2` by default).
+  A trip with no scorable window falls back to the placeholder result and is recorded as
+  `placeholder-window-fallback`.
+- Caveat: v1 saturated on real phone windows (`mag_min` scaler scale about 5.7e-18); v2 fixes
+  that (floored scales, `z_clip`, orientation-robust features). Labels are still synthetic
+  injected pulses, there is no validation set of phone data, and the 0.5 threshold sits at an
+  artificial 50% prevalence. Treat `risk_score` as a demo signal, not a verified risk measure.
 - External training/evaluation data is kept outside git under `model/data/`; see `model/data/external/*/SOURCE.md` on the data machine for sources and licences.
-- Code: `app/window_model.py` (port of `serve.py`); parity is tested against `serve.py`.
+- Code: `app/window_model.py` (v1, port of `serve.py`, and loader) and
+  `app/window_features_v2.py` (v2, port of `model/retrain/features_v2.py`); v2 parity is tested
+  against `features_v2.score_window`, v1 against `serve.py`.
 
 ## 9. Data model
 
