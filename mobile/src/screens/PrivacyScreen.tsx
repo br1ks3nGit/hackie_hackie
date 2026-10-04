@@ -12,7 +12,6 @@ import { useLanguage } from '../i18n';
 import { styles as shared } from '../appStyles';
 import { Card, PageHeader, PrimaryButton, SecondaryButton } from '../ui';
 import { ErrorBanner } from '../uiBlocks';
-import { LanguagePicker } from '../LanguagePicker';
 import { ReminderCard } from '../ReminderCard';
 import { deleteMe } from '../api/client';
 
@@ -94,10 +93,6 @@ export function PrivacyScreen({ apiKey, recording, onDeleted }: PrivacyScreenPro
   return (
     <ScrollView style={shared.screen} contentContainerStyle={[shared.content, styles.content]}>
       <PageHeader title={t('privacy')} />
-      <Card>
-        <Text style={shared.bodyStrong}>{t('language')}</Text>
-        <LanguagePicker />
-      </Card>
       <Card>
         <Text style={shared.bodyStrong} accessibilityRole="header">
           {t('dataTitle')}

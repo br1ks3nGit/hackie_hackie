@@ -6,6 +6,7 @@ export const zhHK: Record<keyof typeof en, string> = {
   coach: '建議',
   privacy: '私隱',
   language: '語言',
+  languageHint: '打開語言選項',
   greeting: '歡迎嚟到香港，{name}',
   visitorCover: '香港訪客汽車保險',
   drivingScore: '訪港駕駛評分',
