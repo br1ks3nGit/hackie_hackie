@@ -27,9 +27,12 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
       DATA_DIR: /data/raw
       MODEL_PATH: /models/model.pkl
+      MODEL_KIND: ${MODEL_KIND:-placeholder}
+      WINDOW_MODEL_PATH: ${WINDOW_MODEL_PATH:-/models/window/model.json}
     volumes:
       - rawdata:/data/raw
       - models:/models
+      - ./model/remade_model:/models/window:ro
     ports:
       # Bound to all interfaces on purpose: phones on the LAN must reach the API.
       - "0.0.0.0:8000:8000"

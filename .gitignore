@@ -32,3 +32,6 @@ node_modules/
 .vscode/
 .idea/
 mobile/.expo/
+
+# External training/evaluation datasets (kept outside git)
+model/data/

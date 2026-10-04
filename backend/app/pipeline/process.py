@@ -5,6 +5,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.classify import classify_trip
+from app.config import get_settings
 from app.database import SessionLocal
 from app.model import confidence_to_score, predict, score_to_tier
 from app.models import Event, Incident, Trip, TripFeature, TripScore
@@ -18,6 +19,7 @@ from app.pipeline.signal import (
     _resample_imu,
     _rotate_to_car_frame,
 )
+from app.window_model import WINDOW_FALLBACK_VERSION, predict_trip
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +77,23 @@ def _add_events(db: Session, trip_id: str, events: list[dict[str, Any]]) -> None
         db.add(event)
 
 
-def _add_score(db: Session, trip_id: str, features: dict[str, Any]) -> tuple[int, str]:
-    """Score the features with the model and add the TripScore; return (score, tier)."""
-    prediction = predict(features)
+def _predict(features: dict[str, Any], imu_df: pd.DataFrame) -> dict[str, Any]:
+    """Placeholder / pkl prediction, or the window model when MODEL_KIND=window."""
+    if get_settings().model_kind != "window":
+        return predict(features)
+    prediction = predict_trip(imu_df)
+    if prediction is None:
+        logger.warning("No full 250-sample window in the trip; using the placeholder model")
+        return {**predict(features), "model_version": WINDOW_FALLBACK_VERSION}
+    logger.info("Window model scored %s windows", prediction["windows"])
+    return prediction
+
+
+def _add_score(
+    db: Session, trip_id: str, features: dict[str, Any], imu_df: pd.DataFrame
+) -> tuple[int, str]:
+    """Score the trip with the model and add the TripScore; return (score, tier)."""
+    prediction = _predict(features, imu_df)
     confidence = prediction["confidence"]
     score = confidence_to_score(confidence)
     tier = score_to_tier(score)
@@ -99,6 +115,7 @@ def _analyse_and_save(
     """Signal processing, event/crash detection, features and score; adds rows to the session."""
     # Process signals: resample -> gravity removal -> car-frame -> low-pass
     imu_df = _resample_imu(imu_df)
+    grid_imu = imu_df  # 50 Hz, raw g with gravity: the window model removes gravity itself
     imu_df = _remove_gravity(imu_df)
     imu_df = _rotate_to_car_frame(imu_df, gps_df)
     imu_df = _apply_lowpass_filter(imu_df)
@@ -113,7 +130,7 @@ def _analyse_and_save(
     _add_events(db, trip_id, events)
     db.add(TripFeature(trip_id=trip_id, features=features))
 
-    return _add_score(db, trip_id, features)
+    return _add_score(db, trip_id, features, grid_imu)
 
 
 def _run_trip(db: Session, trip_id: str) -> None:
