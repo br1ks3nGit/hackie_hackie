@@ -175,6 +175,26 @@ own `.gitignore` of `*`). Each folder has `SOURCE.md` and `MANIFEST.sha256`.
   gz -1.2; left turns +0.9..1.5), and 11 of 12 exceed the +-6 s surroundings. The wall-clock
   `timestamp` column has 1 s resolution; use `uptimeNanos`.
 
+### Baseline on Ferreira (evaluation only)
+`uv run --project backend python model/eval_ferreira.py` scores a 5 s window (250 samples at 50 Hz,
+`_terra` accel /9.80665, resampled by `uptimeNanos`) centred on each of the 69 events, plus 600
+random unlabelled windows >= 10 s from any event. Never trained on; data stays gitignored.
+Variant B zeroes the `mag_min` coefficient (its scaler scale is ~5.7e-18): a diagnostic only.
+
+| | A shipped | B no mag_min (diagnostic) |
+|---|---|---|
+| ROC AUC, 55 aggressive vs 14 non-aggressive | 0.552 | 0.769 |
+| Detection @0.5, aggressive overall | 0.00 | 0.98 |
+| Detection @0.5 by type (brake / accel / turns / lane changes) | 0 | 1.00 / 0.92 / 1.00 / 1.00 |
+| Non-aggressive events > 0.5 | 0.00 | 0.50 |
+| Unlabelled windows > 0.5 (rough false positives) | 0.00 | 0.32 |
+
+A scores every window 0.000 (saturation), so it detects nothing. Without `mag_min` it detects
+nearly all aggressive events, but flags half the non-aggressive events and a third of ordinary
+windows, so it separates weakly and is not a fix. Caveats: n is tiny (69 events, 2 drivers),
+data is earth-frame (not device-frame like our app), only the 14 non-aggressive events are true
+negatives (unlabelled stretches are not guaranteed calm); indicative only.
+
 ## 6. Retraining plan
 
 1. Fix saturation: floor scaler scales (e.g. max(scale, small epsilon relative to feature range)),
