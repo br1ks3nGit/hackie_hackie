@@ -1,8 +1,9 @@
-"""Window risk model (model/remade_model): logistic regression over 250-sample windows.
+"""Window risk model: logistic regression over 250-sample windows, chosen by the model file.
 
-Ported from model/remade_model/serve.py (numpy/scipy only, no pandas frames, no pickle).
-Feature extraction and gravity removal are the same maths as the training pipeline; the
-scoring math reads the coefficients from model.json. Input is accelerometer in g at 50 Hz.
+v1 (model/remade_model, window-logreg-v1) is ported from serve.py; v2 (model/retrained_model,
+feature_set horizontal-mag-v2, window-logreg-v2) lives in app/window_features_v2.py. Both are
+numpy/scipy only, no pickle; the scoring math reads the coefficients from model.json.
+Input is accelerometer in g at 50 Hz, gravity included.
 """
 
 import json
@@ -17,6 +18,7 @@ from scipy.special import expit
 from scipy.stats import kurtosis, skew
 
 from app.config import get_settings
+from app.window_features_v2 import score_window_v2, validate_v2
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +137,8 @@ def extract_features(ax: np.ndarray, ay: np.ndarray, az: np.ndarray) -> dict[str
 
 def score_window(window: np.ndarray, model: dict[str, Any]) -> dict[str, float | int]:
     """Score one (250, 3) window of ax, ay, az in g at 50 Hz (gravity included)."""
+    if "feature_set" in model:
+        return score_window_v2(window, model)
     if window.shape != (WINDOW_SAMPLES, 3):
         raise ValueError(f"window must have shape ({WINDOW_SAMPLES}, 3), got {window.shape}")
     ax, ay, az = (_highpass(window[:, i]) for i in range(3))
@@ -159,6 +163,11 @@ def validate_model(model: Any, path: str) -> dict[str, Any]:
     """Check the structure of a parsed model.json; raise WindowModelError with a clear message."""
     if not isinstance(model, dict):
         raise WindowModelError(f"WINDOW_MODEL_PATH {path}: top level must be a JSON object")
+    if "feature_set" in model:
+        try:
+            return validate_v2(model, path)
+        except (ValueError, TypeError, AttributeError) as e:
+            raise WindowModelError(str(e)) from e
     missing = [k for k in _REQUIRED_KEYS if k not in model]
     if missing:
         raise WindowModelError(f"WINDOW_MODEL_PATH {path}: missing keys {missing}")
@@ -171,6 +180,7 @@ def validate_model(model: Any, path: str) -> dict[str, Any]:
     if unknown:
         raise WindowModelError(f"WINDOW_MODEL_PATH {path}: unknown features {sorted(unknown)}")
     model.setdefault("threshold", WINDOW_RISK_THRESHOLD)
+    model.setdefault("version", WINDOW_MODEL_VERSION)
     return model
 
 
@@ -180,7 +190,7 @@ def read_model_file(path: str) -> dict[str, Any]:
     if not file.is_file():
         raise WindowModelError(
             f"MODEL_KIND=window but WINDOW_MODEL_PATH {path!r} does not exist; mount "
-            "model/remade_model or set WINDOW_MODEL_PATH to its model.json"
+            "model/retrained_model or set WINDOW_MODEL_PATH to its model.json"
         )
     try:
         parsed = json.loads(file.read_text())
@@ -194,7 +204,7 @@ def load_window_model() -> None:
     global _window_model
     path = get_settings().window_model_path
     _window_model = read_model_file(path)
-    logger.info("Window model %s loaded from %s", WINDOW_MODEL_VERSION, path)
+    logger.info("Window model %s loaded from %s", _window_model["version"], path)
 
 
 def split_windows(imu_df: pd.DataFrame) -> list[np.ndarray]:
@@ -227,6 +237,6 @@ def predict_trip(imu_df: pd.DataFrame) -> dict[str, Any] | None:
         return None
     return {
         "confidence": round(risky_share(scores), 4),
-        "model_version": WINDOW_MODEL_VERSION,
+        "model_version": _window_model["version"],
         "windows": len(scores),
     }
