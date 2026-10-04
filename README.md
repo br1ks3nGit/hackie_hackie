@@ -26,7 +26,7 @@ detects harsh braking, harsh acceleration, sharp cornering, speeding and possibl
 and turns each trip into features for a risk model. Trip scores roll up into a
 distance-weighted 90-day driver score, which maps to a tier (A to E) and a premium
 multiplier between 0.80 and 1.30. The driver sees their score and trip explanations in the
-app; the insurer sees drivers by anonymous id with tier, multiplier and event rates. No
+app; the insurer sees drivers by id with tier, multiplier and event rates. No
 protected attributes (age, gender, etc.) are used, and a driver can delete all their data.
 
 Status: the backend API, pipeline, classification, scoring, the insurer web dashboard and the
