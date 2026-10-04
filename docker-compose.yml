@@ -32,7 +32,7 @@ services:
     volumes:
       - rawdata:/data/raw
       - models:/models
-      - ./model/remade_model:/models/window:ro
+      - ./model/retrained_model:/models/window:ro
     ports:
       # Bound to all interfaces on purpose: phones on the LAN must reach the API.
       - "0.0.0.0:8000:8000"

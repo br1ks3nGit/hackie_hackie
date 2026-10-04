@@ -94,6 +94,9 @@ Decision: GPS is read for speed only (and its accuracy), about once per second w
 - [x] ML1 Window model behind `MODEL_KIND=window` (default `placeholder`): `app/window_model.py` ports
       `model/remade_model/serve.py`; trip risk = share of 250-sample windows with risk > 0.5.
       Open: re-baseline on recorded phone trips before relying on it.
+- [x] ML2 Wire window model v2: `app/window_features_v2.py` ports `model/retrain/features_v2.py`;
+      `window_model.py` picks v1/v2 from the model file; default `WINDOW_MODEL_PATH` is
+      `model/retrained_model/model.json`.
 
 ## Phase G - Docs
 - [ ] G1 Rewrite `docs/handoff.md` and `contracts/` from the generated OpenAPI contract.

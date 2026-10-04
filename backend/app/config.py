@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     model_path: str = "./models/model.pkl"
     # "placeholder" = rules / models/model.pkl; "window" = 250-sample window model on the IMU
     model_kind: Literal["placeholder", "window"] = "placeholder"
-    window_model_path: str = "../model/remade_model/model.json"
+    window_model_path: str = "../model/retrained_model/model.json"
     trip_min_distance_km: float = 1.0
     trip_max_gps_gap_s: float = 30.0
     trip_min_duration_s: float = 60.0
