@@ -5,6 +5,7 @@ export const en = {
   coach: 'Coach',
   privacy: 'Privacy',
   language: 'Language',
+  languageHint: 'Opens language options',
   greeting: 'Welcome to Hong Kong, {name}',
   visitorCover: 'Hong Kong visitor motor cover',
   drivingScore: 'Visitor driving score',

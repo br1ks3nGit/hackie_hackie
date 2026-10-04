@@ -6,13 +6,13 @@ import { Language, useLanguage } from './i18n';
 const STACK_FONT_SCALE = 1.3;
 const PILL_MIN_WIDTH = 96;
 
-const OPTIONS: { code: Language; label: string }[] = [
-  { code: 'en', label: 'English' },
-  { code: 'zh-CN', label: '普通话 · 简体' },
-  { code: 'zh-HK', label: '廣東話 · 繁體' },
+export const LANGUAGE_OPTIONS: { code: Language; label: string; short: string }[] = [
+  { code: 'en', label: 'English', short: 'EN' },
+  { code: 'zh-CN', label: '普通话 · 简体', short: '简' },
+  { code: 'zh-HK', label: '廣東話 · 繁體', short: '繁' },
 ];
 
-export function LanguagePicker() {
+export function LanguagePicker({ onSelect }: { onSelect?: () => void } = {}) {
   const { language, setLanguage, t } = useLanguage();
   const { fontScale } = useWindowDimensions();
   const stacked = fontScale > STACK_FONT_SCALE;
@@ -22,7 +22,7 @@ export function LanguagePicker() {
       accessibilityRole="radiogroup"
       accessibilityLabel={t('language')}
     >
-      {OPTIONS.map(({ code, label }) => {
+      {LANGUAGE_OPTIONS.map(({ code, label }) => {
         const selected = code === language;
         return (
           <Pressable
@@ -32,7 +32,10 @@ export function LanguagePicker() {
               selected ? styles.pillSelected : styles.pillUnselected,
               pressed && styles.pressed,
             ]}
-            onPress={() => setLanguage(code)}
+            onPress={() => {
+              setLanguage(code);
+              onSelect?.();
+            }}
             accessibilityRole="radio"
             accessibilityState={{ selected, checked: selected }}
             accessibilityLanguage={code}
