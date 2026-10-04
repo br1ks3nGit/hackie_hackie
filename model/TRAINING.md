@@ -1,8 +1,7 @@
 # Model training notes and retraining plan
 
 Single record of findings on the model's features, assumptions, and training. Evidence tags:
-`file:line`, "per REPORT.md" (only the report says it), "not verified".
-Written 2026-10-04 on branch feat/model-retrain.
+`file:line`, "per REPORT.md" (only the report says it), "not verified". Written 2026-10-04.
 
 ## 1. Current model
 
@@ -99,22 +98,82 @@ Removed from the original 106:
 
 ## 5. New data
 
-Status: downloading on k-pro; inspection pending (k-pro unreachable at time of writing).
-Data is gitignored (`model/data/`).
+Inspected 2026-10-04 on this Mac (read-only). Data is gitignored (`model/data/external/`, plus its
+own `.gitignore` of `*`). Each folder has `SOURCE.md` and `MANIFEST.sha256`.
 
-### Mendeley 9vr83n7z5j v2
-- CC BY 4.0, DOI 10.17632/9vr83n7z5j.2. Accel m/s^2, gyro deg/s, 50 Hz, per-trip labels
-  normal / aggressive / risky, mounting not stated (all from the dataset page; not verified here).
-- Location on k-pro: `~/Sites/hackathon-type-shi/model/data/external/mendeley_9vr83n7z5j_v2/`.
-- INSPECTION PLACEHOLDER: file list, drivers/trips count, label counts, real sample rate,
-  gravity present?, axis conventions, mounting, gaps/duplicates. TODO.
+### Mendeley 9vr83n7z5j v2 (CC BY 4.0, DOI 10.17632/9vr83n7z5j.2)
+- Download: `https://data.mendeley.com/public-api/zip/9vr83n7z5j/download/2`, 24.9 MB zip of 20 rar
+  (publisher sha256 of all 20 verified); 418 MB extracted to `mendeley_9vr83n7z5j_v2/rar_x/`
+  (bsdtar reads rar). No login or consent needed.
+- Layout: `Day-{1..7}{S,R,E}` (2020-05-23..30, one folder per drive; 16 distinct incl. `Day-3E`,
+  `Day-4E1..E3`), `Driver-1..7` (2021-02-02..04) and `Daywise data.rar`, which duplicates the
+  Day-* folders (md5-identical CSVs, 12 of 16) and adds `Day-3E`, `Day-4E1-3`. Each folder:
+  `Accelerometer.csv`, `Gyroscope.csv`, plus `GPS.csv` (0 bytes in every Day folder),
+  `Proximity.csv` (Day) or `Pressure.csv` (Driver, all zeros in the head), some `.xlsx` copies.
+- Schema Day: `Timestamp,Milliseconds,X,Y,Z`; Driver: `Timestamp,Unix Timestamp,Milliseconds,X,Y,Z`.
+  `Timestamp` has minute (Driver) or second resolution; `Milliseconds` is elapsed ms since start.
+- Pairs with acc and gyro >1000 rows: 19 = 9 Day + 3 Day-E + 7 Driver. Missing
+  gyro: `Day-2R`, `Day-6R`. Truncated: `Day-3R` (463 rows), `Day-4E1` (1 row), `Driver-2` (12 s).
+  `Day-1S` gyro has 8,731 rows vs 103,252 acc. `Day-4S`/`Day-4E2` gyro has a stray trailing row
+  (NaN) and a row count unlike acc (296,402 / 132,550 vs 99,576 / 158,863).
+- BIGGEST ISSUE, frozen sensor: the recording is live only for roughly the first minute, then the
+  last value repeats. Day-1R: 88,332 of 94,627 acc rows (93%) equal the previous row, one run of
+  883 s; per-minute share of changing rows: minute 0 = 1.00, minute 1 = 0.10, then ~0.00 with a
+  brief burst near minute 15. Same in every Day folder (frozen 75-98%) and Driver folders (68-93%;
+  Driver-1: minute 0 = 1.00, minute 1 = 0.32, then 0.00). Timestamps keep advancing, so a naive
+  load looks like a complete 16-min trip. Live time (non-frozen intervals) is 63-72 s per Day
+  folder, 122-178 s per Driver folder (`Driver-2` 12 s), 26 min in total across the 19 pairs
+  versus about 302 min nominal. The live segment is the start of the drive, so the labelled
+  behaviour may not be in it (not verifiable: no label annotations).
+- Sampling (live rows only): Day acc and gyro median dt 10 ms, p95 11 ms, so 100 Hz, not the
+  stated 50 Hz; Driver median 10 ms, p95 45 ms (bursty, ~25 Hz effective). Gaps > 100 ms in live
+  data: 1 in `Day-1S` (12.2 s), 1 in `Day-4E2` (0.27 s), none elsewhere. Whole-file maximum gap
+  (acc) was `Driver-3` 5.7 s (the only 100 ms+ gap in Driver files).
+- Duplicate timestamps: 68-99% of rows in Day files (Day-1R 87,415 acc rows with dt = 0), from
+  the frozen repeat; none in live data. No NaN in acc; no non-monotonic time anywhere.
+- Units: |acc| median over live rows 9.6-10.6 (Day), 9.6-10.0 (Driver), i.e. m/s^2, not g.
+  Gyro: no declared sign or unit check possible; live norm median 0.004-0.10 and p99 0.5-1.2
+  (Driver; 2.2-3.3 in Day, handling noise at start) is consistent with rad/s and not with
+  the stated deg/s (a car turning at 20 deg/s would show 20). Not proven (no labelled turns).
+- Orientation: gravity is on Z (mean live acc about (-1..2, -3..1, 9.4-9.8), tilt up to ~19 deg
+  from Z), the phone is not vehicle-aligned and the mount differs per drive. Stable within the live
+  minute (per-minute mean direction within 8 deg of trip mean in Day, 3-7 deg in Driver);
+  stability over the frozen part cannot be assessed. Mount type is not stated.
+- Clipping: acc max |axis| = 19.7 in all Day folders (about 2 g sensor range), 4 rows in
+  `Day-5S` at >= 19.6; Driver phones reach 28 (no saturation).
+- Labels: NONE in the data. No label column, no label file, no per-trip metadata. The dataset page
+  says normal / aggressive / risky but not which folder is which. Folder suffixes `S`, `R`, `E`
+  (counts: 7 S, 5 R, 4 E incl. `Day-4E1-3`) and the `Driver-N` folders have no documented
+  mapping. Guess "S = safe/normal, R = risky, E = extreme/aggressive" is NOT verified.
+  Class balance is therefore unknown. Needs the author (or dataset paper) before any use.
 
-### Ferreira 2017
-- No licence stated: internal evaluation only; never commit or ship. Per-event labels with
-  start/end seconds, 69 events, windshield mount, accel m/s^2, gyro rad/s (not verified here).
-- Location on k-pro: `~/Sites/hackathon-type-shi/model/data/external/ferreira_2017/`.
-- INSPECTION PLACEHOLDER: files, sensors, sample rate, event types and counts, axis
-  conventions, trip/driver split. TODO.
+### Ferreira 2017 (no licence stated: internal evaluation only)
+- Clone depth 1, commit `b65118d794432a559932a4f58b9b6dd612f0bb22`, 97 MB (`ferreira_2017/data/{16,17,20,21}`).
+- Per trip 6 files: `acelerometro_terra.csv`, `aceleracaoLinear_terra.csv`, `giroscopio_terra.csv`,
+  `campoMagnetico_terra.csv` (`timestamp,uptimeNanos,x,y,z`), `groundTruth.csv`
+  (`evento, inicio, fim`, header has spaces), `viagem.json`. "terra" = earth frame, not device.
+- Trips: 16 = 1269 s (64,645 rows), 17 = 406 s (20,675), 20 = 589 s (30,014), 21 = 809 s
+  (41,178); total 51 min. Acc, linear acc and gyro share the same timestamps.
+- Sampling: acc, linear, gyro 50.9 Hz, dt median 19.6 ms, p95 20 ms, max 40 ms, no gaps > 100 ms,
+  no duplicates, no NaN, monotonic. Magnetometer is 101.7 Hz with every timestamp duplicated.
+- Units: acc z mean 9.65-9.74 m/s^2, |acc| median 9.64-9.78, so m/s^2. Linear acc has gravity
+  removed (mean z -0.07..-0.16). Gyro |w| median 0.05-0.15, p99 0.6-0.9, max 2.3 and yaw peaks
+  +-1.1..1.5 in turns: rad/s.
+- Orientation: z is up (gravity); x, y are horizontal earth-frame axes (means 0), so braking or
+  turning does not map to a fixed vehicle axis (per-event peak x/y sign flips with heading).
+  Gravity direction constant (per-minute mean direction within 0.83 deg). Only gz (yaw rate) and
+  horizontal magnitude are vehicle-independent.
+- Labels (`groundTruth.csv`): 69 events, 7 types: `evento_nao_agressivo` 14, `freada_agressiva`
+  12, `aceleracao_agressiva` 12, `curva_direita_agressiva` 11, `curva_esquerda_agressiva` 11,
+  `troca_faixa_direita_agressiva` 5, `troca_faixa_esquerda_agressiva` 4. (README list omits
+  `aceleracao_agressiva`.) Duration 1.6-4.9 s, median ~3 s; events cover ~3.5 min of 51 min.
+  Unlabelled time is not "normal": only 14 explicit non-aggressive events. Trip 21 file is not
+  sorted by `inicio` (one overlap).
+- Time alignment (checked trip 20 end to end): event seconds are elapsed since
+  `viagem.json` `firstCollectionUptimeNanos`; `t = (uptimeNanos - first) / 1e9`. All 12 aggressive
+  turns have their peak |gz| inside [inicio, fim] (e.g. 9.5-12.5 s right turn peaks at 10.4 s,
+  gz -1.2; left turns +0.9..1.5), and 11 of 12 exceed the +-6 s surroundings. The wall-clock
+  `timestamp` column has 1 s resolution; use `uptimeNanos`.
 
 ## 6. Retraining plan
 
@@ -125,7 +184,8 @@ Data is gitignored (`model/data/`).
    optional vehicle-frame rotation from gravity (mean accel) + PCA of horizontal plane, or GPS.
 3. Add gyroscope (yaw rate, gravity-aligned) and GPS speed context as inputs (needs a new
    input contract: the backend already has gx/gy/gz and speed, signal.py:18, loading.py:62).
-4. Units: convert accel to g and gyro to rad/s per dataset (Mendeley m/s^2 and deg/s, Ferreira m/s^2 and rad/s).
+4. Units: convert accel to g per dataset (both m/s^2). Gyro is rad/s in Ferreira and, by the data, in
+   Mendeley (not deg/s as the page says). Mendeley is blocked until labels and frozen data are resolved (section 5).
 5. Train on VED + Mendeley; evaluate per-trip on held-out Mendeley drivers and per-event on
    Ferreira (internal only).
 6. Recalibrate threshold and Platt for realistic prevalence (1-5%); keep trip-level aggregation.
@@ -148,8 +208,8 @@ All details below: per official dataset page, checked 2026-10-04.
 - Licence CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Attribution text:
   "Wawage, Pawan (2022), Driver Behavior Detection Using Smartphone - Dataset, Mendeley Data, V2,
   doi: 10.17632/9vr83n7z5j.2", licensed under CC BY 4.0. Indicate any changes made.
-- Accel m/s^2, gyro deg/s, 50 Hz; per-trip labels normal / aggressive / risky; mounting and label
-  method not stated.
+- Page claims accel m/s^2, gyro deg/s, 50 Hz, per-trip labels normal / aggressive / risky. Files
+  contradict: 100 Hz, gyro looks rad/s, no labels in the data (section 5).
 
 ### Ferreira 2017
 - Ferreira J Junior, Carvalho E, Ferreira BV, de Souza C, Suhara Y, Pentland A, et al. (2017)
